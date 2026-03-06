@@ -32,7 +32,7 @@ const organizerSchema=new mongoose.Schema({
         default:0,
         min:0
     },
-    date:{
+    Date:{
         type:Date,
         required:true,
         index:true,
@@ -58,7 +58,7 @@ const organizerSchema=new mongoose.Schema({
     },
     status:{
         type:String,
-        enum:["upcoming","ongoing","completed","cancelled",],
+        enum:["upcoming","completed","cancelled",],
         default:"upcoming",
         index:true
     },
@@ -72,6 +72,7 @@ const organizerSchema=new mongoose.Schema({
 organizerSchema.index(
     {isDeleted:1,isExpired:1,status:1}
 )
+
 
 const Organizer=mongoose.model("Organizer",organizerSchema)
 

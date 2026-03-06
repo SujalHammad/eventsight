@@ -5,7 +5,12 @@ const dotenv=require("dotenv")
 dotenv.config()
 
 const {connectDb}=require("./db/db.js")
-const {authRoute}=require("./routes/auth.route.js")
+
+const { authRoute } = require("./routes/auth.route.js")
+const { organizerRoute } = require("./routes/organizer.routes.js")
+const { adminRoute } = require("./routes/admin.route.js")
+
+require("./jobs/eventExpiry.job.js")
 
 const app=express()
 
@@ -14,6 +19,8 @@ app.use(express.urlencoded({limit:"16kb",extended:true}))
 app.use(cookieParser())
 
 app.use("/api/auth",authRoute)
+app.use("/api/organizer",organizerRoute)
+app.use("/api/admin",adminRoute)
 
 
 
