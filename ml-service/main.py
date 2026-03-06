@@ -40,7 +40,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(current_dir, ".env"))
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
-app = FastAPI(title="SponsorWise ML Service", version="1.5.0")
+app = FastAPI(title="SponsorWise ML Service", version="2.0.0-Agentic")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -173,19 +173,6 @@ def competition_expected(city: str, is_weekend: int, is_festive: int) -> int:
         lam *= 1.4
     return int(np.clip(round(lam), 0, 25))
 
-def compute_fit_score(brand_cat: str, event_type: str) -> float:
-    bc = BRAND_AFFINITIES.get(brand_cat, {"aud": ["mass"], "aff": []})
-    tags = EVENT_TAGS.get(event_type, ["mass"])
-    type_match = 1.0 if event_type in bc["aff"] else 0.55
-    overlap = len(set(bc["aud"]).intersection(set(tags)))
-    aud_score = {0: 0.50, 1: 0.82, 2: 1.05}.get(overlap, 1.10)
-    city_fit = 0.95
-    return float(np.clip(type_match * aud_score * city_fit, 0.25, 1.60))
-
-def fit_to_synergy(fit_score: float) -> int:
-    lo, hi = 0.55, 1.25
-    return int(np.clip((fit_score - lo) / (hi - lo) * 100, 0, 100))
-
 def extract_json(text: str) -> Optional[dict]:
     if not text:
         return None
@@ -210,6 +197,32 @@ def cold_email_to_string(cold_email: Any) -> str:
         return json.dumps(cold_email, indent=2)
     except Exception:
         return str(cold_email)
+
+# ─────────────────────────────────────────────────────────────
+# 🧠 CORE UPDATE: The Reverse-Scaler & Synergy Math
+# ─────────────────────────────────────────────────────────────
+def compute_fit_score(brand_cat: str, event_type: str) -> float:
+    """Old Math Fallback: Used if the AI fails"""
+    bc = BRAND_AFFINITIES.get(brand_cat, {"aud": ["mass"], "aff": []})
+    tags = EVENT_TAGS.get(event_type, ["mass"])
+    type_match = 1.0 if event_type in bc["aff"] else 0.55
+    overlap = len(set(bc["aud"]).intersection(set(tags)))
+    aud_score = {0: 0.50, 1: 0.82, 2: 1.05}.get(overlap, 1.10)
+    city_fit = 0.95
+    return float(np.clip(type_match * aud_score * city_fit, 0.25, 1.60))
+
+def fit_to_synergy(fit_score: float) -> int:
+    """Old Math Fallback: Converts ML decimal to UI percentage"""
+    lo, hi = 0.55, 1.25
+    return int(np.clip((fit_score - lo) / (hi - lo) * 100, 0, 100))
+
+def synergy_to_fit(synergy_score: int) -> float:
+    """REVERSE SCALER: Converts AI 0-100 score back into ML decimal for XGBoost"""
+    lo, hi = 0.55, 1.25
+    # Algebra: reverse the fit_to_synergy formula
+    fit = (synergy_score / 100.0) * (hi - lo) + lo
+    return float(np.clip(fit, 0.25, 1.60))
+
 
 # ─────────────────────────────────────────────────────────────
 # Bands + Recommendations + AI Insights
@@ -311,6 +324,8 @@ def make_recommendations(
 def generate_ai_insights(
     *,
     brand: str,
+    brand_description: Optional[str],
+    event_description: Optional[str],
     sponsor_category: str,
     city: str,
     event_type: str,
@@ -326,7 +341,6 @@ def generate_ai_insights(
 ) -> Dict[str, Any]:
     prob_pct = None if prob is None else int(round(float(np.clip(prob, 0.0, 1.0)) * 100))
 
-    # Fallback (always available)
     base = {
         "headline": f"{band_label}{'' if prob_pct is None else f' ({prob_pct}%)'}",
         "explanation": (
@@ -351,12 +365,14 @@ def generate_ai_insights(
     if client is None:
         return base
 
-    # Groq-enhanced insights (strict JSON)
     system_prompt = "You are a sponsorship analyst. Output ONLY valid JSON. No Markdown."
     prompt = f"""
 Brand: {brand}
 Sponsor category: {sponsor_category}
+Brand Context: {brand_description or 'No specific description provided.'}
+
 Event: {event_type} in {city}
+Event Context: {event_description or 'No specific description provided.'}
 
 Model outputs:
 - Potential band: {band_label}
@@ -370,6 +386,7 @@ Model outputs:
 Task:
 Explain these outputs in simple, business language.
 Important rules:
+- Take the Brand Context and Event Context into account when explaining the synergy fit.
 - If cost_per_reach < 12, say ROI is strong (do NOT say it's too high).
 - Emphasize synergy = fit, potential = acceptance likelihood.
 - Don't invent numbers not provided.
@@ -394,14 +411,12 @@ caution (string, 1 sentence)
         )
         parsed = extract_json(completion.choices[0].message.content)
         if isinstance(parsed, dict):
-            # Merge safely
             for k in ["headline", "explanation", "key_factors", "what_it_means", "next_actions", "caution"]:
                 if k in parsed and parsed[k]:
                     base[k] = parsed[k]
     except Exception as e:
         print(f"❌ AI Insights Error: {e}")
 
-    # Ensure types
     if not isinstance(base.get("key_factors"), list):
         base["key_factors"] = []
     if not isinstance(base.get("what_it_means"), list):
@@ -465,6 +480,7 @@ def fallback_ai(verdict_label: str, prob_pct: Optional[int], predicted_attendanc
     }
 
 def generate_ai_bundle(*, sponsor_category: str, event_type: str, city: str,
+                       brand_name: str, brand_description: Optional[str], event_description: Optional[str],
                        predicted_attendance: int, cost_per_head: float,
                        verdict_label: str, prob: Optional[float], competing_events: int):
     prob_pct = None if prob is None else int(round(float(np.clip(prob, 0.0, 1.0)) * 100))
@@ -485,8 +501,12 @@ def generate_ai_bundle(*, sponsor_category: str, event_type: str, city: str,
     prompt = f"""
 {guardrail}
 
+Brand: {brand_name}
 Brand Category: {sponsor_category}
+Brand Context: {brand_description or 'No specific description provided.'}
 Event: {event_type} in {city}
+Event Context: {event_description or 'No specific description provided.'}
+
 Projected crowd: {predicted_attendance}
 Cost per reach: ₹{cost_per_head:.2f} (ROI bucket: {bucket})
 Competing events: {competing_events}
@@ -531,6 +551,11 @@ class EventInput(BaseModel):
     city: str
     event_type: str
     sponsor_category: str
+    
+    brand_name: Optional[str] = "Brand"
+    brand_description: Optional[str] = None
+    event_description: Optional[str] = None
+
     date: str = Field(..., description="YYYY-MM-DD")
     price: float
     marketing_budget: float
@@ -556,7 +581,7 @@ def health():
         "ok": True,
         "models_loaded": bool(scaler and attendance_model and sponsor_model),
         "groq_enabled": bool(client),
-        "version": "1.5.0-ai-insights",
+        "version": "2.0.0-Agentic",
         "feature_count": len(EXPECTED_COLUMNS),
     }
 
@@ -594,7 +619,7 @@ def analyze_brand(data: BrandInput):
 @app.post("/predict")
 def predict(data: EventInput):
     if not (scaler and attendance_model and sponsor_model):
-        raise HTTPException(status_code=500, detail="ML artifacts not loaded. Check /health and server logs.")
+        raise HTTPException(status_code=500, detail="ML artifacts not loaded.")
 
     city = canonical_city(data.city)
     event_type = canonical_event_type(data.event_type)
@@ -619,8 +644,48 @@ def predict(data: EventInput):
     organizer_rep = 0.55 if data.organizer_reputation is None else float(np.clip(data.organizer_reputation, 0.05, 0.97))
     lineup_q = 0.50 if data.lineup_quality is None else float(np.clip(data.lineup_quality, 0.05, 0.98))
 
-    fit_score = compute_fit_score(sponsor_category, event_type)
-    synergy_score = fit_to_synergy(fit_score)
+    # ─────────────────────────────────────────────────────────────
+    # 🧠 THE AGENTIC PRE-CHECK: Let Groq calculate Synergy
+    # ─────────────────────────────────────────────────────────────
+    dynamic_synergy = None
+    if client is not None:
+        try:
+            sys_prompt = "You are an expert sponsorship evaluator. Output strictly JSON. No Markdown."
+            user_prompt = f"""
+            Brand: {data.brand_name} ({sponsor_category})
+            Brand Context: {data.brand_description or 'None provided'}
+            
+            Event: {event_type} in {city}
+            Event Context: {data.event_description or 'None provided'}
+            
+            Task: Calculate a synergy score from 0 to 100 based on audience alignment, brand fit, and thematic relevance. 
+            Return ONLY valid JSON: {{"synergy_score": <integer>}}
+            """
+            comp = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}],
+                temperature=0.1,
+                max_tokens=50
+            )
+            parsed = extract_json(comp.choices[0].message.content)
+            if isinstance(parsed, dict) and "synergy_score" in parsed:
+                dynamic_synergy = int(parsed["synergy_score"])
+        except Exception as e:
+            print(f"⚠️ Agentic Synergy Check Failed: {e}. Falling back to math.")
+
+    # ─────────────────────────────────────────────────────────────
+    # 🔄 REVERSE SCALING & SAFE FALLBACK
+    # ─────────────────────────────────────────────────────────────
+    if dynamic_synergy is not None:
+        # Success! Groq provided the score.
+        synergy_score = np.clip(dynamic_synergy, 0, 100)
+        # Use Reverse-Scaler to convert it back for XGBoost
+        fit_score = synergy_to_fit(synergy_score)
+    else:
+        # Fallback: API timed out, use the old hardcoded math
+        fit_score = compute_fit_score(sponsor_category, event_type)
+        synergy_score = fit_to_synergy(fit_score)
+
 
     brand_kpi = data.brand_kpi or "awareness"
     brand_city_focus = data.brand_city_focus or "all_mp"
@@ -681,7 +746,25 @@ def predict(data: EventInput):
     X_scaled = scaler.transform(x)
 
     pred_att_raw = float(attendance_model.predict(X_scaled)[0])
-    predicted_attendance = int(np.clip(round(pred_att_raw), 0, int(max(0, data.venue_capacity))))
+    capacity = int(max(1, data.venue_capacity))
+    
+    # Calculate how much demand there is relative to the size of the room
+    demand_ratio = pred_att_raw / capacity
+
+    if demand_ratio >= 1.4:
+        # Demand is massive (140%+ of capacity). True 100% sell-out.
+        predicted_attendance = capacity
+    elif demand_ratio >= 1.0:
+        # Demand meets capacity, but we factor in a realistic 5-10% no-show rate.
+        # This scales the occupancy smoothly between 90% and 99%
+        fill_factor = 0.90 + (0.09 * ((demand_ratio - 1.0) / 0.4))
+        predicted_attendance = int(capacity * fill_factor)
+    else:
+        # Demand is lower than capacity. 
+        predicted_attendance = int(pred_att_raw)
+
+    # Final safety clip
+    predicted_attendance = int(np.clip(predicted_attendance, 0, capacity))
 
     X_stage2 = np.column_stack((X_scaled, [pred_att_raw]))
     y_hat = int(sponsor_model.predict(X_stage2)[0])
@@ -708,17 +791,19 @@ def predict(data: EventInput):
         competing_events=competing_events,
         organizer_rep=organizer_rep,
         lineup_q=lineup_q,
-        synergy_score=synergy_score,
+        synergy_score=int(synergy_score),
     )
 
     insights = generate_ai_insights(
-        brand="Brand",
+        brand=data.brand_name,
+        brand_description=data.brand_description,
+        event_description=data.event_description,
         sponsor_category=sponsor_category,
         city=city,
         event_type=event_type,
         prob=prob,
         band_label=band["label"],
-        synergy=synergy_score,
+        synergy=int(synergy_score),
         predicted_attendance=predicted_attendance,
         occupancy=occupancy,
         cost_per_head=cost_per_head,
@@ -731,6 +816,9 @@ def predict(data: EventInput):
         sponsor_category=sponsor_category,
         event_type=event_type,
         city=city,
+        brand_name=data.brand_name,
+        brand_description=data.brand_description,
+        event_description=data.event_description,
         predicted_attendance=predicted_attendance,
         cost_per_head=cost_per_head,
         verdict_label=band["label"],
@@ -762,9 +850,7 @@ def predict(data: EventInput):
             "competing_events": int(competing_events),
         },
 
-        # ✅ new AI explanation section for UI
         "ai_insights": insights,
-
         "recommendations": recs,
 
         "ai_analysis": ai_bundle.get("analysis", ""),

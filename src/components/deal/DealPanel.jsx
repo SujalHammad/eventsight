@@ -112,6 +112,18 @@ export default function DealPanel({
             className="mt-2 w-full px-4 py-3 rounded-2xl border border-slate-200 bg-white font-bold outline-none focus:ring-4 focus:ring-slate-100"
           />
         </div>
+
+        {/* ✅ NEW: Event Context / Description ONLY (Brand is in Step 1 now) */}
+        <div className="lg:col-span-2">
+          <label className="text-xs font-black uppercase text-slate-500 ml-1">Event Context & Description</label>
+          <textarea
+            rows="2"
+            value={dealData.event_description || ""}
+            onChange={(e) => setDealData((d) => ({ ...d, event_description: e.target.value }))}
+            placeholder="E.g., A 3-day esports tournament featuring top regional players..."
+            className="mt-2 w-full px-4 py-3 rounded-2xl border border-slate-200 bg-white font-bold outline-none focus:ring-4 focus:ring-slate-100 resize-none"
+          />
+        </div>
       </div>
 
       {showAdvanced && (

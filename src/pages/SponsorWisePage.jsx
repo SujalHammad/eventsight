@@ -17,7 +17,7 @@ export default function SponsorWisePage() {
   ];
 
   const CITIES = [
-    "Burhanpur","Chhindwara","Damoh","Dewas","Gwalior","Indore","Jabalpur","Katni",
+    "Bhopal","Burhanpur","Chhindwara","Damoh","Dewas","Gwalior","Indore","Jabalpur","Katni",
     "Khandwa","Khargone","Mandsaur","Morena","Narmadapuram","Neemuch","Ratlam","Rewa",
     "Sagar","Satna","Sehore","Seoni","Shivpuri","Singrauli","Ujjain","Vidisha",
   ];

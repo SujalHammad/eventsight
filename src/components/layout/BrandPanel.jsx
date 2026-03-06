@@ -49,6 +49,16 @@ export default function BrandPanel({
                 {brandResult?.strategy_statement ? `“${brandResult.strategy_statement}”` : "—"}
               </div>
             </div>
+
+            {/* ✅ NEW: Show Brand Description in View Mode */}
+            {brandData.brand_description && (
+              <div className="mt-3 rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="text-xs font-black uppercase text-slate-500">Brand Context</div>
+                <div className="mt-1 text-slate-600 text-sm font-medium">
+                  {brandData.brand_description}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="grid gap-3">
@@ -95,6 +105,19 @@ export default function BrandPanel({
                   <option key={c}>{c}</option>
                 ))}
               </select>
+            </div>
+
+            {/* ✅ NEW: Brand Context Text Area (Spans full width) */}
+            <div className="md:col-span-2">
+              <label className="text-xs font-black uppercase text-slate-500 ml-1">Brand Context & Description</label>
+              <textarea
+                name="brand_description"
+                rows="2"
+                value={brandData.brand_description || ""}
+                onChange={(e) => setBrandData({ ...brandData, brand_description: e.target.value })}
+                placeholder="e.g., A premium energy drink targeting college athletes and gamers..."
+                className="mt-2 w-full px-4 py-3 rounded-2xl border border-slate-200 bg-white font-bold outline-none focus:ring-4 focus:ring-slate-100 resize-none"
+              />
             </div>
           </div>
 
