@@ -546,6 +546,7 @@ cold_email (either a string or object with Subject/Body).
 class BrandInput(BaseModel):
     company_name: str
     industry: str
+    brand_description: Optional[str] = None  
 
 class EventInput(BaseModel):
     city: str
@@ -598,9 +599,11 @@ def analyze_brand(data: BrandInput):
 
     system_prompt = "You output ONLY valid JSON. No Markdown."
     prompt = (
-        f"Analyze brand: {data.company_name} ({data.industry}). "
+        f"Analyze brand: {data.company_name} ({data.industry}).\n"
+        f"Brand Context/Description: {data.brand_description or 'None provided.'}\n" 
         "Return JSON keys: target_audience, core_values, persona, strategy_statement."
     )
+    
     try:
         completion = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
