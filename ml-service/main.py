@@ -436,26 +436,25 @@ def clamp_attendance(pred_att_raw: float, capacity: int) -> int:
     """
     Convert raw model output to a realistic attendance figure.
 
-    Smooth and continuous — no jump discontinuity.
-
-    Bands:
-      demand >= 1.4x capacity  →  near sell-out (99%)
-      1.0x <= demand < 1.4x   →  smooth fill from 90% to 99%
-      demand < 1.0x            →  trust model output directly
+    Realistic fill-rate bands for Tier-2/3 MP city events:
+      demand >= 1.4x capacity  →  exceptional demand, cap at ~82%
+      1.0x <= demand < 1.4x   →  strong demand, smooth fill 55% → 82%
+      0.6x <= demand < 1.0x   →  trust model output (normal range)
+      demand < 0.6x            →  weak demand, trust model output
     """
     capacity = max(1, capacity)
     demand_ratio = pred_att_raw / capacity
 
     if demand_ratio >= 1.4:
-        result = int(capacity * 0.99)
+        result = int(capacity * 0.82)   # was 0.99 — true sellouts are rare
     elif demand_ratio >= 1.0:
-        fill_factor = 0.90 + 0.09 * ((demand_ratio - 1.0) / 0.4)
+        # Smooth fill: 55% at ratio=1.0, up to 82% at ratio=1.4
+        fill_factor = 0.55 + 0.27 * ((demand_ratio - 1.0) / 0.4)
         result = int(capacity * fill_factor)
     else:
-        result = int(pred_att_raw)
+        result = int(pred_att_raw)      # model is within capacity, trust it
 
     return int(np.clip(result, 0, capacity))
-
 
 def prob_band(prob: Optional[float]) -> Dict[str, str]:
     """Map acceptance probability to a human-readable potential tier."""
@@ -1183,10 +1182,17 @@ def predict(
         _set_onehot(f"brand_city_focus_{brand_city_focus}")
 
     # ── Stage 1 — Predict attendance ────────────────────────────
-    X_scaled      = scaler.transform(x)
-    pred_att_raw  = float(attendance_model.predict(X_scaled)[0])
-    capacity      = int(max(1, data.venue_capacity))
+    X_scaled     = scaler.transform(x)
+    pred_att_raw = float(attendance_model.predict(X_scaled)[0])
+    capacity     = int(max(1, data.venue_capacity))
     predicted_att = clamp_attendance(pred_att_raw, capacity)
+
+    # ADD THIS — exposes the raw issue immediately
+    demand_ratio_debug = pred_att_raw / capacity
+    logger.info(
+        f"Attendance raw={pred_att_raw:.1f} capacity={capacity} "
+        f"demand_ratio={demand_ratio_debug:.3f}"
+    )
 
     # ── Stage 2 — Predict sponsor acceptance ────────────────────
     # pred_att_raw (not clamped) is appended to preserve the
