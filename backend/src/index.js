@@ -9,7 +9,7 @@ const {connectDb}=require("./db/db.js")
 const { authRoute } = require("./routes/auth.route.js")
 const { organizerRoute } = require("./routes/organizer.routes.js")
 const { adminRoute } = require("./routes/admin.route.js")
-// const { sponsorRoute } = require("./routes/sponsor.route.js")
+const { sponsorRoute } = require("./routes/sponsor.route.js")
 
 require("./jobs/eventExpiry.job.js")
 
@@ -22,7 +22,7 @@ app.use(cookieParser())
 app.use("/api/auth",authRoute)
 app.use("/api/organizer",organizerRoute)
 app.use("/api/admin",adminRoute)
-// app.use("/api/sponsor",sponsorRoute)
+app.use("/api/sponsor",sponsorRoute)
 
 
 

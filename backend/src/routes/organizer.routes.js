@@ -22,4 +22,6 @@ organizerRoute.delete("/events/:eventId",verifyJwt,authorizeRole("organizer"),de
 
 
 
+
+
 module.exports={organizerRoute};
