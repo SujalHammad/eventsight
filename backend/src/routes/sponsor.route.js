@@ -1,7 +1,7 @@
 const express=require("express");
 const { verifyJwt } = require("../middleware/auth.middleware");
 const { authorizeRole } = require("../middleware/roleCheck");
-const { createSponsorProfile, getSponsorProfile, updateSponsorProfile, deleteSponsorProfile, giveFeedback, getMyFeedback, getEventById, getAllEvents, updateFeedback, getPrediction } = require("../controllers/sponsor.controller");
+const { createSponsorProfile, getSponsorProfile, updateSponsorProfile, deleteSponsorProfile, giveFeedback, getCompletedEvents,getMyFeedback, getEventById, getAllEvents, updateFeedback, getPrediction } = require("../controllers/sponsor.controller");
 const { upload } = require("../middleware/multer.middleware");
 
 const sponsorRoute=express.Router();
@@ -11,7 +11,6 @@ sponsorRoute.post("/profileCreate",verifyJwt,authorizeRole("sponsor"),upload.sin
 sponsorRoute.get("/profileFetch",verifyJwt,authorizeRole("sponsor"),getSponsorProfile);
 sponsorRoute.patch("/profileUpdate",verifyJwt,authorizeRole("sponsor"),upload.single("logo"),updateSponsorProfile); 
 sponsorRoute.delete("/profileDelete",verifyJwt,authorizeRole("sponsor"),deleteSponsorProfile);
-
 
 // event fetch 
 sponsorRoute.get("/events",verifyJwt,authorizeRole("sponsor"),getAllEvents);
