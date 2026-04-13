@@ -1,17 +1,11 @@
 import React from "react";
 import TopNav from "./TopNav";
 
-export default function AppShell({ children }) {
+export default function AppShell({ children, user }) {
   return (
-    <div className="min-h-screen text-white">
-      <TopNav />
-      <div className="max-w-7xl mx-auto px-5 py-8">
-        {children}
-      </div>
-
-      <div className="py-10 text-center text-xs text-white/50">
-        SponsorWise • Portfolio build
-      </div>
+    <div className="app-shell">
+      <TopNav user={user} />
+      <main className="shell-wrap">{children}</main>
     </div>
   );
 }
