@@ -11,6 +11,52 @@ const { eventCreate } = require("./organizer.controller");
 const {EventFeedBack}=require("../models/eventFeedBack.model")
 const axios = require("axios")
 
+const DEFAULT_FEEDBACK_RATINGS = Object.freeze({
+    organizerReputation: 0.5,
+    lineupQuality: 0.55,
+    activationMaturity: 0.5
+})
+
+const buildFeedbackAggregateFields = () => ({
+    totalFeedbacks: { $size: "$feedbacks" },
+    avgOrganizerReputation: {
+        $cond: [
+            { $gt: [{ $size: "$feedbacks" }, 0] },
+            {
+                $divide: [
+                    { $add: [{ $sum: "$feedbacks.organizerReputation" }, DEFAULT_FEEDBACK_RATINGS.organizerReputation] },
+                    { $add: [{ $size: "$feedbacks" }, 1] }
+                ]
+            },
+            DEFAULT_FEEDBACK_RATINGS.organizerReputation
+        ]
+    },
+    avgLineupQuality: {
+        $cond: [
+            { $gt: [{ $size: "$feedbacks" }, 0] },
+            {
+                $divide: [
+                    { $add: [{ $sum: "$feedbacks.lineupQuality" }, DEFAULT_FEEDBACK_RATINGS.lineupQuality] },
+                    { $add: [{ $size: "$feedbacks" }, 1] }
+                ]
+            },
+            DEFAULT_FEEDBACK_RATINGS.lineupQuality
+        ]
+    },
+    avgActivationMaturity: {
+        $cond: [
+            { $gt: [{ $size: "$feedbacks" }, 0] },
+            {
+                $divide: [
+                    { $add: [{ $sum: "$feedbacks.activationMaturity" }, DEFAULT_FEEDBACK_RATINGS.activationMaturity] },
+                    { $add: [{ $size: "$feedbacks" }, 1] }
+                ]
+            },
+            DEFAULT_FEEDBACK_RATINGS.activationMaturity
+        ]
+    }
+})
+
 const createSponsorProfile=asyncHandler(async(req,res)=>{
     const existing = await Sponsor.findOne({ sponsor: req.user._id, isDeleted: false })
     if(existing){
@@ -91,7 +137,7 @@ const updateSponsorProfile = asyncHandler(async (req, res) => {
         throw new ApiError(400, "No valid fields to update")
     }
 
-    // brandType validation
+
     if (updateData.brandType) {
         const existBrandType = await BrandType.findById(updateData.brandType)
         if (!existBrandType) {
@@ -99,7 +145,7 @@ const updateSponsorProfile = asyncHandler(async (req, res) => {
         }
     }
 
-    // logo update
+
     if (req.file) {
         const upload = await uploadOnCloudinary(req.file.path)
         if (!upload) throw new ApiError(500, "Logo upload failed")
@@ -146,8 +192,7 @@ const getAllEvents = asyncHandler(async (req, res) => {
 
     const filter = {
         isDeleted: false,
-        isExpired: false,
-        status: "upcoming"
+        date: { $gte: new Date() }
     }
 
     if (req.query.search) {
@@ -176,7 +221,7 @@ const getAllEvents = asyncHandler(async (req, res) => {
 
         { $match: filter },
 
-        // category
+        
         {
             $lookup: {
                 from: "eventcategories",
@@ -187,7 +232,7 @@ const getAllEvents = asyncHandler(async (req, res) => {
         },
         { $unwind: { path: "$eventCategory", preserveNullAndEmptyArrays: true } },
 
-        // organizer user info
+       
         {
             $lookup: {
                 from: "users",
@@ -198,7 +243,7 @@ const getAllEvents = asyncHandler(async (req, res) => {
         },
         { $unwind: { path: "$organizerInfo", preserveNullAndEmptyArrays: true } },
 
-        // feedbacks
+        
         {
             $lookup: {
                 from: "eventfeedbacks",
@@ -210,12 +255,10 @@ const getAllEvents = asyncHandler(async (req, res) => {
 
         {
             $addFields: {
-                avgOrganizerReputation: { $ifNull: [{ $avg: "$feedbacks.organizerReputation" }, 0] },
-                avgLineupQuality: { $ifNull: [{ $avg: "$feedbacks.lineupQuality" }, 0] },
-                avgActivationMaturity: { $ifNull: [{ $avg: "$feedbacks.activationMaturity" }, 0] },
-                totalFeedbacks: { $size: "$feedbacks" },
+                ...buildFeedbackAggregateFields(),
                 "organizerInfo.password": "$$REMOVE",
-                "organizerInfo.refreshToken": "$$REMOVE"
+                "organizerInfo.refreshToken": "$$REMOVE",
+                status: "upcoming"
             }
         },
 
@@ -268,7 +311,7 @@ const getEventById = asyncHandler(async (req, res) => {
             }
         },
 
-        // category
+       
         {
             $lookup: {
                 from: "eventcategories",
@@ -279,7 +322,7 @@ const getEventById = asyncHandler(async (req, res) => {
         },
         { $unwind: { path: "$eventCategory", preserveNullAndEmptyArrays: true } },
 
-        // organizer user info
+       
         {
             $lookup: {
                 from: "users",
@@ -290,7 +333,7 @@ const getEventById = asyncHandler(async (req, res) => {
         },
         { $unwind: { path: "$organizerInfo", preserveNullAndEmptyArrays: true } },
 
-        // feedbacks
+        
         {
             $lookup: {
                 from: "eventfeedbacks",
@@ -300,7 +343,7 @@ const getEventById = asyncHandler(async (req, res) => {
             }
         },
 
-        // ⭐ organizer ke saare events
+        
         {
             $lookup: {
                 from: "organizers",
@@ -312,12 +355,9 @@ const getEventById = asyncHandler(async (req, res) => {
 
         {
             $addFields: {
-                avgOrganizerReputation: { $ifNull: [{ $avg: "$feedbacks.organizerReputation" }, 0] },
-                avgLineupQuality: { $ifNull: [{ $avg: "$feedbacks.lineupQuality" }, 0] },
-                avgActivationMaturity: { $ifNull: [{ $avg: "$feedbacks.activationMaturity" }, 0] },
-                totalFeedbacks: { $size: "$feedbacks" },
+                ...buildFeedbackAggregateFields(),
 
-                // ⭐ past events count
+                
                 pastEventOrganized: {
                     $size: {
                         $filter: {
@@ -325,7 +365,7 @@ const getEventById = asyncHandler(async (req, res) => {
                             as: "e",
                             cond: {
                                 $and: [
-                                    { $eq: ["$$e.isExpired", true] },
+                                    { $lt: ["$$e.date", new Date()] },
                                     { $eq: ["$$e.isDeleted", false] }
                                 ]
                             }
@@ -334,11 +374,12 @@ const getEventById = asyncHandler(async (req, res) => {
                 },
 
                 "organizerInfo.password": "$$REMOVE",
-                "organizerInfo.refreshToken": "$$REMOVE"
+                "organizerInfo.refreshToken": "$$REMOVE",
+                status: "upcoming"
             }
         },
 
-        // cleanup — feedbacks aur allOrganizerEvents response mein nahi chahiye
+        
         { $project: { feedbacks: 0, allOrganizerEvents: 0 } }
 
     ])
@@ -358,18 +399,19 @@ const giveFeedback = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Invalid event id")
     }
 
-    // event exist aur completed hona chahiye
+    
     const event = await Organizer.findOne({
         _id: req.params.id,
         isDeleted: false,
-        status: "completed"
+        isExpired:true,
+        date: { $lt: new Date() }
     })
 
     if (!event) {
         throw new ApiError(404, "Event not found or not completed yet")
     }
 
-    // duplicate feedback check
+    
     const existing = await EventFeedBack.findOne({
         event: req.params.id,
         sponsor: req.user._id
@@ -464,7 +506,7 @@ const getPrediction = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Invalid event id")
     }
 
-    // ─── 1. Sponsor profile fetch ───────────────────────────────
+    
     const sponsorProfile = await Sponsor.findOne({
         sponsor: req.user._id,
         isDeleted: false
@@ -474,27 +516,29 @@ const getPrediction = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Sponsor profile not found")
     }
 
-    // ─── 2. Event fetch ─────────────────────────────────────────
+    
     const event = await Organizer.aggregate([
 
         {
             $match: {
                 _id: new mongoose.Types.ObjectId(req.params.eventId),
                 isDeleted: false,
-                isExpired: false,
-                status: "upcoming"
+                date: { $gte: new Date() }
             }
         },
 
+    
         {
             $lookup: {
-                from: "eventfeedbacks",
-                localField: "_id",
-                foreignField: "event",
-                as: "feedbacks"
+                from: "eventcategories",
+                localField: "eventCategory",
+                foreignField: "_id",
+                as: "eventCategory"
             }
         },
+        { $unwind: { path: "$eventCategory", preserveNullAndEmptyArrays: true } },
 
+        
         {
             $lookup: {
                 from: "organizers",
@@ -506,10 +550,8 @@ const getPrediction = asyncHandler(async (req, res) => {
 
         {
             $addFields: {
-                avgOrganizerReputation: { $ifNull: [{ $avg: "$feedbacks.organizerReputation" }, 0] },
-                avgLineupQuality: { $ifNull: [{ $avg: "$feedbacks.lineupQuality" }, 0] },
-                avgActivationMaturity: { $ifNull: [{ $avg: "$feedbacks.activationMaturity" }, 0] },
                 totalSocialReach: { $sum: "$socialMediaAccount.followers" },
+                
                 pastEventOrganized: {
                     $size: {
                         $filter: {
@@ -517,17 +559,36 @@ const getPrediction = asyncHandler(async (req, res) => {
                             as: "e",
                             cond: {
                                 $and: [
-                                    { $eq: ["$$e.isExpired", true] },
+                                    { $lt: ["$$e.date", new Date()] },
                                     { $eq: ["$$e.isDeleted", false] }
                                 ]
                             }
                         }
                     }
+                },
+               
+                pastEventIds: {
+                    $map: {
+                        input: {
+                            $filter: {
+                                input: "$allOrganizerEvents",
+                                as: "e",
+                                cond: {
+                                    $and: [
+                                        { $lt: ["$$e.date", new Date()] },
+                                        { $eq: ["$$e.isDeleted", false] }
+                                    ]
+                                }
+                            }
+                        },
+                        as: "e",
+                        in: "$$e._id"
+                    }
                 }
             }
         },
 
-        { $project: { feedbacks: 0, allOrganizerEvents: 0 } }
+        { $project: { allOrganizerEvents: 0 } }
     ])
 
     if (!event.length) {
@@ -536,19 +597,54 @@ const getPrediction = asyncHandler(async (req, res) => {
 
     const eventData = event[0]
 
-    // ─── 3. /analyze-brand call ─────────────────────────────────
+    let avgOrganizerReputation = DEFAULT_FEEDBACK_RATINGS.organizerReputation
+    let avgLineupQuality       = DEFAULT_FEEDBACK_RATINGS.lineupQuality
+    let avgActivationMaturity  = DEFAULT_FEEDBACK_RATINGS.activationMaturity
+
+    if (eventData.pastEventIds && eventData.pastEventIds.length > 0) {
+        
+        const feedbackStats = await EventFeedBack.aggregate([
+            {
+                $match: {
+                    event: { $in: eventData.pastEventIds }
+                }
+            },
+            {
+                $group: {
+                    _id: null,
+                    feedbackCount: { $sum: 1 },
+                    sumOrganizerReputation: { $sum: "$organizerReputation" },
+                    sumLineupQuality: { $sum: "$lineupQuality" },
+                    sumActivationMaturity: { $sum: "$activationMaturity" }
+                }
+            }
+        ])
+
+        if (feedbackStats.length > 0) {
+            const stats = feedbackStats[0]
+            const divisor = (stats.feedbackCount || 0) + 1
+
+            avgOrganizerReputation = ((stats.sumOrganizerReputation || 0) + DEFAULT_FEEDBACK_RATINGS.organizerReputation) / divisor
+            avgLineupQuality       = ((stats.sumLineupQuality || 0) + DEFAULT_FEEDBACK_RATINGS.lineupQuality) / divisor
+            avgActivationMaturity  = ((stats.sumActivationMaturity || 0) + DEFAULT_FEEDBACK_RATINGS.activationMaturity) / divisor
+        }
+        
+    }
+    
+
+  
     let analyzeBrandResponse
     try {
         analyzeBrandResponse = await axios.post(
             `${process.env.ML_API_URL}/analyze-brand`,
             {
-                company_name: sponsorProfile.brandName,
-                industry: sponsorProfile.brandType.name,
+                company_name:      sponsorProfile.brandName,
+                industry:          sponsorProfile.brandType.name,
                 brand_description: sponsorProfile.description
             },
             {
                 headers: {
-                    "x-api-key": process.env.ML_API_KEY,
+                    "x-api-key":    process.env.ML_API_KEY,
                     "Content-Type": "application/json"
                 }
             }
@@ -557,35 +653,35 @@ const getPrediction = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Brand analysis failed")
     }
 
-    // ─── 4. /predict call ───────────────────────────────────────
+    
     let predictResponse
     try {
         predictResponse = await axios.post(
             `${process.env.ML_API_URL}/predict`,
             {
-                city: eventData.location,
-                event_type: eventData.eventCategory?.name || "",
-                sponsor_category: sponsorProfile.brandType.name,
-                brand_name: sponsorProfile.brandName,
-                brand_description: sponsorProfile.description,
-                event_description: eventData.eventDescription,
-                date: new Date(eventData.date).toISOString().split("T")[0],
-                price: eventData.ticketPrice,
-                marketing_budget: eventData.marketingBudget,
-                sponsor_amount: eventData.ask,
-                venue_capacity: eventData.capacity,
-                organizer_reputation: eventData.avgOrganizerReputation,
-                lineup_quality: eventData.avgLineupQuality,
-                is_indoor: eventData.isIndoor ? 1 : 0,
-                social_media_reach: eventData.totalSocialReach,
-                past_events_organized: eventData.pastEventOrganized,
-                brand_kpi: sponsorProfile.brandKpi,
-                brand_city_focus: sponsorProfile.cityFocus,
-                brand_activation_maturity: eventData.avgActivationMaturity
+                city:                      eventData.location,
+                event_type:                eventData.eventCategory?.name || "",
+                sponsor_category:          sponsorProfile.brandType.name,
+                brand_name:                sponsorProfile.brandName,
+                brand_description:         sponsorProfile.description,
+                event_description:         eventData.eventDescription,
+                date:                      new Date(eventData.date).toISOString().split("T")[0],
+                price:                     eventData.ticketPrice,
+                marketing_budget:          eventData.marketingBudget,
+                sponsor_amount:            eventData.ask,
+                venue_capacity:            eventData.capacity,
+                organizer_reputation:      avgOrganizerReputation,
+                lineup_quality:            avgLineupQuality,
+                brand_activation_maturity: avgActivationMaturity,
+                is_indoor:                 eventData.isIndoor ? 1 : 0,
+                social_media_reach:        eventData.totalSocialReach,
+                past_events_organized:     eventData.pastEventOrganized,
+                brand_kpi:                 sponsorProfile.brandKpi,
+                brand_city_focus:          sponsorProfile.cityFocus
             },
             {
                 headers: {
-                    "x-api-key": process.env.ML_API_KEY,
+                    "x-api-key":    process.env.ML_API_KEY,
                     "Content-Type": "application/json"
                 }
             }
@@ -603,12 +699,104 @@ const getPrediction = asyncHandler(async (req, res) => {
     )
 })
 
+const getCompletedEvents = asyncHandler(async (req, res) => {
+
+    const page = parseInt(req.query.page) || 1
+    const limit = Math.min(parseInt(req.query.limit) || 20, 50)
+    const skip = (page - 1) * limit
+
+    const filter = {
+        isDeleted: false,
+        date: { $lt: new Date() }
+    }
+
+    if (req.query.search) {
+        filter.eventName = { $regex: req.query.search, $options: "i" }
+    }
+
+    const result = await Organizer.aggregate([
+        { $match: filter },
+
+        {
+            $lookup: {
+                from: "eventcategories",
+                localField: "eventCategory",
+                foreignField: "_id",
+                as: "eventCategory"
+            }
+        },
+        { $unwind: { path: "$eventCategory", preserveNullAndEmptyArrays: true } },
+
+        {
+            $lookup: {
+                from: "users",
+                localField: "organizer",
+                foreignField: "_id",
+                as: "organizerInfo"
+            }
+        },
+        { $unwind: { path: "$organizerInfo", preserveNullAndEmptyArrays: true } },
+
+        {
+            $lookup: {
+                from: "eventfeedbacks",
+                localField: "_id",
+                foreignField: "event",
+                as: "feedbacks"
+            }
+        },
+
+        {
+            $addFields: {
+                ...buildFeedbackAggregateFields(),
+                myFeedback: {
+                    $filter: {
+                        input: "$feedbacks",
+                        as: "f",
+                        cond: { $eq: ["$$f.sponsor", req.user._id] }
+                    }
+                },
+                "organizerInfo.password": "$$REMOVE",
+                "organizerInfo.refreshToken": "$$REMOVE",
+                status: "completed"
+            }
+        },
+
+        {
+            $addFields: {
+                hasFeedback: { $gt: [{ $size: "$myFeedback" }, 0] }
+            }
+        },
+
+        { $project: { feedbacks: 0, myFeedback: 0 } },
+        { $sort: { date: -1 } },
+
+        {
+            $facet: {
+                events: [{ $skip: skip }, { $limit: limit }],
+                totalCount: [{ $count: "count" }]
+            }
+        }
+    ])
+
+    const events = result[0]?.events || []
+    const total = result[0]?.totalCount[0]?.count || 0
+
+    return res.status(200).json(
+        new ApiResponse(200, {
+            events,
+            pagination: { total, page, limit, totalPages: Math.ceil(total / limit) }
+        }, "Completed events fetched successfully")
+    )
+})
+
 module.exports={
     createSponsorProfile,
     getSponsorProfile,
     updateSponsorProfile,
     deleteSponsorProfile,
     getAllEvents,
+    getCompletedEvents,
     getEventById,
     giveFeedback,
     getMyFeedback,

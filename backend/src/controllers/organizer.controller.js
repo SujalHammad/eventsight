@@ -7,6 +7,63 @@ const { uploadOnCloudinary } = require("../utility/cloudinary.js");
 const {EventCategory}=require("../models/eventCategory.model.js");
 
 
+const DEFAULT_FEEDBACK_RATINGS = Object.freeze({
+    organizerReputation: 0.5,
+    lineupQuality: 0.55,
+    activationMaturity: 0.5
+})
+
+const buildFeedbackAggregateFields = () => ({
+    totalFeedbacks: { $size: "$feedbacks" },
+    avgOrganizerReputation: {
+        $cond: [
+            { $gt: [{ $size: "$feedbacks" }, 0] },
+            {
+                $divide: [
+                    { $add: [{ $sum: "$feedbacks.organizerReputation" }, DEFAULT_FEEDBACK_RATINGS.organizerReputation] },
+                    { $add: [{ $size: "$feedbacks" }, 1] }
+                ]
+            },
+            DEFAULT_FEEDBACK_RATINGS.organizerReputation
+        ]
+    },
+    avgLineupQuality: {
+        $cond: [
+            { $gt: [{ $size: "$feedbacks" }, 0] },
+            {
+                $divide: [
+                    { $add: [{ $sum: "$feedbacks.lineupQuality" }, DEFAULT_FEEDBACK_RATINGS.lineupQuality] },
+                    { $add: [{ $size: "$feedbacks" }, 1] }
+                ]
+            },
+            DEFAULT_FEEDBACK_RATINGS.lineupQuality
+        ]
+    },
+    avgActivationMaturity: {
+        $cond: [
+            { $gt: [{ $size: "$feedbacks" }, 0] },
+            {
+                $divide: [
+                    { $add: [{ $sum: "$feedbacks.activationMaturity" }, DEFAULT_FEEDBACK_RATINGS.activationMaturity] },
+                    { $add: [{ $size: "$feedbacks" }, 1] }
+                ]
+            },
+            DEFAULT_FEEDBACK_RATINGS.activationMaturity
+        ]
+    }
+})
+
+
+
+const parseSocialMedia = (raw) => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw.map(s => ({ ...s, link: typeof s.link === 'string' ? s.link.replace(/^"|"$/g, '').trim() : s.link }));
+    if (typeof raw !== 'string') return [];
+    try {
+        const arr = JSON.parse(raw);
+        return Array.isArray(arr) ? arr.map(s => ({ ...s, link: typeof s.link === 'string' ? s.link.replace(/^"|"$/g, '').trim() : s.link })) : [];
+    } catch { return []; }
+};
 
 const eventCreate=asyncHandler(async(req,res)=>{
     const {
@@ -20,8 +77,10 @@ const eventCreate=asyncHandler(async(req,res)=>{
         ticketPrice,
         marketingBudget,
         isIndoor,
-        socialMediaAccount
+        socialMediaAccount: rawSocial
     }=req.body;
+
+    const socialMediaAccount = parseSocialMedia(rawSocial);
 
      if(
         !eventName ||
@@ -97,12 +156,12 @@ const getOrganizerEvents = asyncHandler(async (req,res)=>{
         isDeleted:false
     }
 
-    if(req.query.type==="active"){
-        filter.isExpired = false
+    if(req.query.type==="active" || req.query.type==="upcoming"){
+        filter.date = { $gte: new Date() };
     }
 
-    if(req.query.type==="expired"){
-        filter.isExpired = true
+    if(req.query.type==="expired" || req.query.type==="completed"){
+        filter.date = { $lt: new Date() };
     }
 
     if(req.query.search){
@@ -143,7 +202,7 @@ const getOrganizerEvents = asyncHandler(async (req,res)=>{
             }
         },
 
-        /* ⭐ feedback lookup */
+       
 
         {
             $lookup:{
@@ -156,16 +215,10 @@ const getOrganizerEvents = asyncHandler(async (req,res)=>{
 
         {
             $addFields:{
-                avgOrganizerReputation:{ 
-                    $ifNull:[{$avg:"$feedbacks.organizerReputation"},0]
-                },
-                avgLineupQuality:{ 
-                    $ifNull:[{$avg:"$feedbacks.lineupQuality"},0]
-                },
-                avgActivationMaturity:{ 
-                    $ifNull:[{$avg:"$feedbacks.activationMaturity"},0]
-                },
-                totalFeedbacks:{ $size:"$feedbacks" }
+                ...buildFeedbackAggregateFields(),
+                status: {
+                    $cond: { if: { $lt: ["$date", new Date()] }, then: "completed", else: "upcoming" }
+                }
             }
         },
         {
@@ -186,7 +239,7 @@ const getOrganizerEvents = asyncHandler(async (req,res)=>{
                     { $count:"count" }
                 ],
                 pastEventsCount:[
-                    { $match:{ isExpired:true } },
+                    { $match:{ date: { $lt: new Date() } } },
                     { $count:"count" }
                 ]
             }
@@ -250,7 +303,7 @@ const getOrganizerEventsById = asyncHandler(async(req,res)=>{
             }
         },
 
-        /* ⭐ feedback lookup */
+       
 
         {
             $lookup:{
@@ -263,16 +316,10 @@ const getOrganizerEventsById = asyncHandler(async(req,res)=>{
 
         {
             $addFields:{
-                avgOrganizerReputation:{ 
-                    $ifNull:[{$avg:"$feedbacks.organizerReputation"},0]
-                },
-                avgLineupQuality:{ 
-                    $ifNull:[{$avg:"$feedbacks.lineupQuality"},0]
-                },
-                avgActivationMaturity:{ 
-                    $ifNull:[{$avg:"$feedbacks.activationMaturity"},0]
-                },
-                totalFeedbacks:{ $size:"$feedbacks" }
+                ...buildFeedbackAggregateFields(),
+                status: {
+                    $cond: { if: { $lt: ["$date", new Date()] }, then: "completed", else: "upcoming" }
+                }
             }
         }
 
@@ -321,7 +368,11 @@ const updateEvent = asyncHandler(async(req,res)=>{
 
     for(const key of allowedFields){
         if(data[key] !== undefined){
-            updateData[key] = data[key]
+            if(key === 'socialMediaAccount'){
+                updateData[key] = parseSocialMedia(data[key])
+            } else {
+                updateData[key] = data[key]
+            }
         }
     }
 
@@ -329,7 +380,7 @@ const updateEvent = asyncHandler(async(req,res)=>{
         throw new ApiError(400,"No valid fields to update")
     }
 
-    /* trim text fields */
+ 
 
     if(updateData.eventName){
         updateData.eventName = updateData.eventName.trim()
@@ -343,7 +394,7 @@ const updateEvent = asyncHandler(async(req,res)=>{
         updateData.location = updateData.location.trim()
     }
 
-    /* category validation */
+    
 
     if(updateData.eventCategory){
 
@@ -358,7 +409,7 @@ const updateEvent = asyncHandler(async(req,res)=>{
         }
     }
 
-    /* date validation */
+   
 
     if(updateData.date){
         const newDate = new Date(updateData.date)
@@ -368,7 +419,7 @@ const updateEvent = asyncHandler(async(req,res)=>{
         }
     }
 
-    /* thumbnail update */
+    
 
     if(req.file){
         const upload = await uploadOnCloudinary(req.file.path)
@@ -385,8 +436,7 @@ const updateEvent = asyncHandler(async(req,res)=>{
         {
             _id:req.params.eventId,
             organizer:req.user._id,
-            isDeleted:false,
-            isExpired:false
+            isDeleted:false
         },
 
         { $set:updateData },
@@ -450,16 +500,3 @@ const deleteEvent = asyncHandler(async(req,res)=>{
 
 module.exports={eventCreate,getOrganizerEvents,getOrganizerEventsById,updateEvent,deleteEvent}
 
-
-// sponsorRoute.post("/profile")
-// sponsorRoute.get("/profile")
-// sponsorRoute.patch("/profile")
-// sponsorRoute.delete("/profile")
-
-// sponsorRoute.get("/events")
-// sponsorRoute.get("/events/:id")
-// sponsorRoute.post("/events/:id/apply")
-
-// sponsorRoute.get("/sponsor/applications")
-// sponsorRoute.post("/sponsor/applications/:id/negotiation")
-// sponsorRoute.patch("/sponsor/applications/:id/withdraw")
