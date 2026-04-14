@@ -19,8 +19,8 @@ const adminLogin = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Username and password are required");
     }
 
-    const ADMIN_USER = process.env.ADMIN_USERNAME || "admin";
-    const ADMIN_PASS = process.env.ADMIN_PASSWORD || "admin@123";
+    const ADMIN_USER = process.env.ADMIN_USERNAME;
+    const ADMIN_PASS = process.env.ADMIN_PASSWORD;
 
     if (username !== ADMIN_USER || password !== ADMIN_PASS) {
         throw new ApiError(401, "Invalid admin credentials");
