@@ -6,24 +6,37 @@ import NegotiationPanel from "./NegotiationPanel";
 import OutreachPanel from "./OutreachPanel";
 import { coldEmailToText } from "@/lib/utils";
 
+function normalizeResult(result) {
+  if (!result) return null;
+  if (result.prediction && typeof result.prediction === "object") {
+    return {
+      ...result.prediction,
+      brandAnalysis: result.brandAnalysis || null,
+    };
+  }
+  return result;
+}
+
 export default function ResultsPanel({ brandCategory, dealData, result }) {
-  if (!result) {
+  const normalized = normalizeResult(result);
+
+  if (!normalized) {
     return (
-      <div className="rounded-3xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center">
-        <div className="text-slate-900 font-black text-xl">No results yet</div>
-        <div className="text-slate-600 mt-2">Run prediction to see sponsor-grade insights.</div>
+      <div className="surface-card text-center py-14">
+        <div className="text-2xl font-black">No results yet</div>
+        <div className="muted mt-2">Run prediction to see the sponsorship verdict, AI insights, recommendations, and outreach draft.</div>
       </div>
     );
   }
 
-  const cold = coldEmailToText(result.cold_email);
+  const cold = coldEmailToText(normalized.cold_email);
 
   return (
-    <div className="space-y-4">
-      <ExecutiveSummary brandCategory={brandCategory} dealData={dealData} result={result} />
-      <AiInsightsPanel insights={result.ai_insights} />
-      <RecommendationsPanel recs={result.recommendations} />
-      <NegotiationPanel points={result.negotiation_points} />
+    <div className="space-y-5">
+      <ExecutiveSummary brandCategory={brandCategory} dealData={dealData} result={normalized} />
+      <AiInsightsPanel insights={normalized.ai_insights} brandAnalysis={normalized.brandAnalysis} result={normalized} />
+      <RecommendationsPanel recs={normalized.recommendations} />
+      <NegotiationPanel points={normalized.negotiation_points} />
       <OutreachPanel text={cold} />
     </div>
   );

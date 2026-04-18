@@ -1,24 +1,39 @@
 import React from "react";
-import Card from "@/components/ui/Card";
+import { parseMaybeJson } from "@/lib/utils";
+
+function normalizeRecommendation(item) {
+  const parsed = parseMaybeJson(item);
+  if (typeof parsed === "string") {
+    return { action: parsed, why: "", expected_effect: "" };
+  }
+  if (parsed && typeof parsed === "object") {
+    return {
+      action: parsed.action || parsed.title || "Recommendation",
+      why: parsed.why || parsed.reason || parsed.description || "",
+      expected_effect: parsed.expected_effect || parsed.impact || parsed.outcome || "",
+    };
+  }
+  return null;
+}
 
 export default function RecommendationsPanel({ recs }) {
-  const items = Array.isArray(recs) ? recs : [];
+  const items = (Array.isArray(recs) ? recs : []).map(normalizeRecommendation).filter(Boolean);
   if (!items.length) return null;
 
   return (
-    <Card className="p-5 sm:p-7 border-emerald-200 bg-emerald-50">
-      <div className="text-xs font-black uppercase text-emerald-700">Recommendations</div>
-      <div className="mt-1 text-xl font-black text-slate-900">Improve acceptance</div>
+    <section className="result-card">
+      <div className="result-kicker result-kicker-good">Recommendations</div>
+      <h3 className="result-section-title mt-1">Improve acceptance</h3>
 
-      <div className="mt-4 grid gap-3">
-        {items.map((r, idx) => (
-          <div key={idx} className="rounded-2xl bg-white border border-emerald-200 p-4">
-            <div className="font-black text-slate-900">{r.action}</div>
-            <div className="mt-2 text-sm text-slate-700">{r.why}</div>
-            <div className="mt-2 text-sm font-black text-emerald-700">{r.expected_effect}</div>
-          </div>
+      <div className="grid gap-4 mt-5">
+        {items.map((item, index) => (
+          <article key={index} className="result-accent-card result-accent-card-good">
+            <div className="result-action-title">{item.action}</div>
+            {item.why ? <p className="muted mt-3 leading-8">{item.why}</p> : null}
+            {item.expected_effect ? <div className="result-impact mt-4">{item.expected_effect}</div> : null}
+          </article>
         ))}
       </div>
-    </Card>
+    </section>
   );
 }

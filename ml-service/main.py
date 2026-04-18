@@ -327,6 +327,29 @@ EVENT_TAGS: Dict[str, List[str]] = {
     "Business Conference": ["professional"],
 }
 
+SUPPORTED_MODEL_EVENT_TYPES = {
+    "College Fest",
+    "Cricket Screening",
+    "Food Festival",
+    "Music Concert",
+    "Religious/Cultural",
+    "Sports Tournament",
+    "Standup Comedy",
+    "Tech Meetup",
+}
+
+SUPPORTED_MODEL_BRAND_CATEGORIES = {
+    "Automobile",
+    "Beauty/Personal Care",
+    "Beverage",
+    "Edtech",
+    "FMCG",
+    "Fintech",
+    "Local Retail",
+    "Real Estate",
+    "Telecom",
+}
+
 
 # ─────────────────────────────────────────────────────────────
 # Normalization & canonical lookup
@@ -351,49 +374,142 @@ EVENT_LOOKUP: Dict[str, str] = _build_lookup({
     "stand-up comedy":     "Standup Comedy",
     "standup comedy":      "Standup Comedy",
     "stand up comedy":     "Standup Comedy",
+    "comedy show":         "Standup Comedy",
     "religious/cultural":  "Religious/Cultural",
     "religious cultural":  "Religious/Cultural",
+    "cultural festival":   "Religious/Cultural",
+    "charity gala":        "Religious/Cultural",
+    "art exhibition":      "Religious/Cultural",
     "tech meet-up":        "Tech Meetup",
     "tech meetup":         "Tech Meetup",
     "tech meet up":        "Tech Meetup",
+    "tech conference":     "Tech Meetup",
+    "business conference": "Tech Meetup",
+    "startup pitch":       "Tech Meetup",
+    "hackathon":           "Tech Meetup",
     "college fest":        "College Fest",
+    "fashion show":        "College Fest",
     "music concert":       "Music Concert",
     "food festival":       "Food Festival",
     "cricket screening":   "Cricket Screening",
     "sports tournament":   "Sports Tournament",
-    "business conference": "Business Conference",
+    "sports event":        "Sports Tournament",
+    "gaming tournament":   "Sports Tournament",
 })
 
 BRAND_LOOKUP: Dict[str, str] = _build_lookup({
     "beauty":               "Beauty/Personal Care",
     "beauty/personal care": "Beauty/Personal Care",
     "personal care":        "Beauty/Personal Care",
+    "health":               "Beauty/Personal Care",
+    "wellness":             "Beauty/Personal Care",
     "fmcg":                 "FMCG",
+    "food & beverage":      "FMCG",
+    "food and beverage":    "FMCG",
+    "food beverage":        "FMCG",
     "telecom":              "Telecom",
+    "technology":           "Telecom",
+    "entertainment":        "Telecom",
+    "software":             "Telecom",
+    "electronics":          "Telecom",
     "real estate":          "Real Estate",
     "beverage":             "Beverage",
     "fintech":              "Fintech",
+    "finance":              "Fintech",
+    "finance & banking":    "Fintech",
+    "banking":              "Fintech",
     "edtech":               "Edtech",
-    "apparel":              "Apparel",
+    "education":            "Edtech",
     "local retail":         "Local Retail",
+    "retail":               "Local Retail",
+    "e-commerce":           "Local Retail",
+    "e commerce":           "Local Retail",
+    "travel & tourism":     "Local Retail",
+    "travel tourism":       "Local Retail",
+    "fashion & apparel":    "Local Retail",
+    "fashion":              "Local Retail",
+    "apparel":              "Local Retail",
+    "sports & fitness":     "Local Retail",
+    "sports fitness":       "Local Retail",
     "automobile":           "Automobile",
 })
 
 
+def _contains_any(blob: str, terms: List[str]) -> bool:
+    return any(term in blob for term in terms)
+
+
 def canonical_city(s: str) -> str:
     norm_input = _norm(s or "")
+    if not norm_input:
+        return "Indore"
     for city in CITIES_POP:
-        if _norm(city) == norm_input:
+        norm_city = _norm(city)
+        if norm_city == norm_input:
+            return city
+        if norm_city in norm_input or norm_input in norm_city:
             return city
     return (s or "").strip()
 
 
-def canonical_event_type(s: str) -> str:
-    return EVENT_LOOKUP.get(_norm(s or ""), (s or "").strip())
+def canonical_event_type(s: str, event_description: Optional[str] = None) -> str:
+    norm_input = _norm(s or "")
+    direct = EVENT_LOOKUP.get(norm_input)
+    if direct in SUPPORTED_MODEL_EVENT_TYPES:
+        return direct
+
+    blob = _norm(f"{s or ''} {event_description or ''}")
+    if _contains_any(blob, ["concert", "gig", "music", "dj"]):
+        return "Music Concert"
+    if _contains_any(blob, ["festival", "food", "fair", "culinary"]):
+        return "Food Festival"
+    if _contains_any(blob, ["comedy", "stand up", "standup"]):
+        return "Standup Comedy"
+    if _contains_any(blob, ["college", "campus", "youth", "fashion"]):
+        return "College Fest"
+    if _contains_any(blob, ["sports", "tournament", "match", "gaming", "esports"]):
+        return "Sports Tournament"
+    if _contains_any(blob, ["tech", "startup", "conference", "summit", "hackathon", "meetup", "pitch", "expo"]):
+        return "Tech Meetup"
+    if _contains_any(blob, ["cricket", "screening", "watch party"]):
+        return "Cricket Screening"
+    if _contains_any(blob, ["cultural", "religious", "community", "heritage", "art", "charity"]):
+        return "Religious/Cultural"
+
+    return "Religious/Cultural"
 
 
-def canonical_brand_category(s: str) -> str:
-    return BRAND_LOOKUP.get(_norm(s or ""), (s or "").strip())
+def canonical_brand_category(
+    s: str,
+    brand_description: Optional[str] = None,
+    brand_name: Optional[str] = None,
+) -> str:
+    norm_input = _norm(s or "")
+    direct = BRAND_LOOKUP.get(norm_input)
+    if direct in SUPPORTED_MODEL_BRAND_CATEGORIES:
+        return direct
+
+    blob = _norm(f"{s or ''} {brand_description or ''} {brand_name or ''}")
+    if _contains_any(blob, ["finance", "bank", "banking", "payment", "wallet", "insurance", "loan", "credit"]):
+        return "Fintech"
+    if _contains_any(blob, ["beauty", "wellness", "health", "personal care", "cosmetic", "skin", "spa"]):
+        return "Beauty/Personal Care"
+    if _contains_any(blob, ["beverage", "drink", "energy drink", "juice", "cola", "water"]):
+        return "Beverage"
+    if _contains_any(blob, ["food", "snack", "grocery", "fmcg", "consumer goods", "household"]):
+        return "FMCG"
+    if _contains_any(blob, ["education", "edtech", "learning", "academy", "course", "training"]):
+        return "Edtech"
+    if _contains_any(blob, ["real estate", "property", "builder", "housing", "residential"]):
+        return "Real Estate"
+    if _contains_any(blob, ["automobile", "car", "bike", "ev", "vehicle", "mobility"]):
+        return "Automobile"
+    if _contains_any(blob, ["technology", "tech", "telecom", "software", "electronics", "media", "streaming", "entertainment", "digital"]):
+        return "Telecom"
+    if _contains_any(blob, ["retail", "e commerce", "ecommerce", "marketplace", "travel", "tourism", "hotel", "restaurant", "fashion", "apparel", "fitness", "sportswear"]):
+        return "Local Retail"
+
+    return "Local Retail"
 
 
 # ─────────────────────────────────────────────────────────────
@@ -1084,8 +1200,8 @@ def predict(
 
     # ── Canonicalize inputs ──────────────────────────────────────
     city             = canonical_city(data.city)
-    event_type       = canonical_event_type(data.event_type)
-    sponsor_category = canonical_brand_category(data.sponsor_category)
+    event_type       = canonical_event_type(data.event_type, data.event_description)
+    sponsor_category = canonical_brand_category(data.sponsor_category, data.brand_description, data.brand_name)
 
     # ── Calendar features ────────────────────────────────────────
     dt          = datetime.strptime(data.date, "%Y-%m-%d")

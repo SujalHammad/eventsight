@@ -21,24 +21,38 @@ export function safeArray(v) {
   return Array.isArray(v) ? v : [];
 }
 
+export function parseMaybeJson(value) {
+  if (typeof value !== "string") return value;
+  const trimmed = value.trim();
+  if (!trimmed) return value;
+  if (!(trimmed.startsWith("{") || trimmed.startsWith("["))) return value;
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return value;
+  }
+}
+
 export function coldEmailToText(coldEmail) {
   if (!coldEmail) return "";
-  if (typeof coldEmail === "string") return coldEmail;
-  if (typeof coldEmail === "object") {
-    const subj = coldEmail.Subject || coldEmail.subject || "";
-    const body = coldEmail.Body || coldEmail.body || "";
+  const parsed = parseMaybeJson(coldEmail);
+  if (typeof parsed === "string") return parsed;
+  if (typeof parsed === "object") {
+    const subj = parsed.Subject || parsed.subject || "";
+    const body = parsed.Body || parsed.body || "";
     if (subj || body) return `Subject: ${subj}\n\n${body}`.trim();
     try {
-      return JSON.stringify(coldEmail, null, 2);
+      return JSON.stringify(parsed, null, 2);
     } catch {
-      return String(coldEmail);
+      return String(parsed);
     }
   }
-  return String(coldEmail);
+  return String(parsed);
 }
 
 export function getErrorMessage(err) {
   return (
+    err?.response?.data?.message ||
     err?.response?.data?.detail ||
     err?.message ||
     "Something went wrong. Please try again."
@@ -48,14 +62,14 @@ export function getErrorMessage(err) {
 export function bandStyles(band) {
   switch (band) {
     case "HIGH":
-      return { text: "text-emerald-700", pill: "bg-emerald-50 border-emerald-200 text-emerald-800" };
+      return { text: "var(--good)", chipBg: "rgba(16,185,129,.12)", chipText: "#047857" };
     case "MEDIUM":
-      return { text: "text-amber-700", pill: "bg-amber-50 border-amber-200 text-amber-800" };
+      return { text: "var(--warn)", chipBg: "rgba(245,158,11,.14)", chipText: "#b45309" };
     case "LOW":
-      return { text: "text-orange-700", pill: "bg-orange-50 border-orange-200 text-orange-800" };
+      return { text: "#c2410c", chipBg: "rgba(234,88,12,.12)", chipText: "#c2410c" };
     case "UNLIKELY":
-      return { text: "text-red-700", pill: "bg-red-50 border-red-200 text-red-800" };
+      return { text: "var(--danger)", chipBg: "rgba(239,68,68,.12)", chipText: "#b91c1c" };
     default:
-      return { text: "text-slate-700", pill: "bg-slate-50 border-slate-200 text-slate-800" };
+      return { text: "var(--text)", chipBg: "rgba(148,163,184,.14)", chipText: "var(--text-soft)" };
   }
 }

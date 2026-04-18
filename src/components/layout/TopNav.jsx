@@ -1,52 +1,106 @@
-import React from "react";
-import { API_BASE } from "@/lib/api";
+import React, { useMemo, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
+import { useTheme } from "@/context/ThemeContext";
+import { logout } from "@/lib/api";
 import logo from "../../assets/logo.png";
 
-export default function TopNav() {
+const cx = (...xs) => xs.filter(Boolean).join(" ");
+
+export default function TopNav({ user }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { setUser, setRole } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const navItems = useMemo(() => {
+    if (!user) return [];
+    const items = [
+      { to: "/", label: "Dashboard" },
+      { to: "/settings", label: "Settings" },
+    ];
+    if (user.role === "sponsor") items.push({ to: "/sponsor-wise", label: "Predictor" });
+    return items;
+  }, [user]);
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await logout();
+    } catch {}
+    setUser(null);
+    setRole(null);
+    navigate("/");
+    setLoggingOut(false);
+  };
+
   return (
-    <div className="sticky top-0 z-40 w-full">
-      <div className="absolute bottom-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
-
-      <div className="bg-[#0B0F19]/90 backdrop-blur-2xl shadow-2xl">
-        <div className="max-w-7xl mx-auto px-5 sm:px-8 py-3 flex items-center justify-between">
-
-          <div className="flex items-center">
-            {/* ✅ FIXED: Added brightness-0 invert to turn dark text into white */}
-            <img
-              src={logo}
-              alt="SponsorWise Logo"
-              className="h-16 sm:h-[76px] w-auto object-contain brightness-125 contrast-110 saturate-150 drop-shadow-[0_0_15px_rgba(59,130,246,0.5)] transition-all duration-300 hover:scale-105"
-            />
-          </div>
-
-          <div className="flex items-center gap-6">
-            <div className="hidden md:flex items-center gap-5 text-sm font-bold text-white/60">
-              <span className="text-white cursor-pointer">Dashboard</span>
-              <span className="hover:text-white cursor-pointer transition-colors">Deal Intelligence</span>
-              <span className="hover:text-white cursor-pointer transition-colors">Reports</span>
+    <header className="topbar">
+      <div className="shell-wrap !py-4 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-5 min-w-0">
+          <Link to="/" className="flex items-center gap-4 min-w-0">
+            <div className="logo-mark">
+              <img src={logo} alt="SponsorWise" className="w-14 h-14 object-contain" />
             </div>
+            <div className="min-w-0">
+              <div className="text-[2rem] font-black leading-none tracking-[-0.04em]">SponsorWise</div>
+              <div className="text-sm faint truncate">AI sponsorship intelligence</div>
+            </div>
+          </Link>
 
-            <div className="h-6 w-px bg-white/10 hidden md:block"></div>
+          {user ? (
+            <nav className="hidden md:flex items-center gap-2">
+              {navItems.map((item) => {
+                const active = location.pathname === item.to;
+                return (
+                  <Link key={item.to} to={item.to} className={cx("nav-pill", active && "active")}>
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          ) : null}
+        </div>
 
-            <div className="flex items-center gap-4">
-              <div className="hidden sm:flex flex-col items-end">
-                <div className="flex items-center gap-2">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
-                  <span className="text-[10px] text-emerald-400 font-black tracking-widest uppercase">System Online</span>
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={toggleTheme} className="btn-secondary !rounded-full !px-5 !py-3">
+            {theme === "dark" ? "☀ Light mode" : "🌙 Dark mode"}
+          </button>
+
+          {user ? (
+            <>
+              <div className="soft-card !py-2.5 !px-3.5 flex items-center gap-3 min-w-0">
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] text-white font-black flex items-center justify-center shadow-lg">
+                  {user.username?.slice(0, 2).toUpperCase() || "US"}
                 </div>
-                <span className="text-xs font-mono text-white/40 mt-0.5">{API_BASE}</span>
+                <div className="hidden sm:block min-w-0">
+                  <div className="font-extrabold leading-none truncate">{user.username}</div>
+                  <div className="text-xs faint uppercase tracking-[0.22em] mt-1">{user.role}</div>
+                </div>
               </div>
-
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-blue-400 border border-white/20 shadow-lg cursor-pointer flex items-center justify-center text-white font-black hover:ring-2 hover:ring-indigo-400 transition-all">
-                RP
-              </div>
-            </div>
-          </div>
+              <button type="button" onClick={handleLogout} disabled={loggingOut} className="btn-secondary !rounded-full !px-5 !py-3">
+                {loggingOut ? "Logging out..." : "Logout"}
+              </button>
+            </>
+          ) : null}
         </div>
       </div>
-    </div>
+
+      {user ? (
+        <div className="shell-wrap md:hidden !pt-0 !pb-4">
+          <div className="tab-row w-full justify-start overflow-auto">
+            {navItems.map((item) => {
+              const active = location.pathname === item.to;
+              return (
+                <Link key={item.to} to={item.to} className={cx("tab-pill whitespace-nowrap", active && "active")}>
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+    </header>
   );
 }
