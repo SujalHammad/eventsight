@@ -8,8 +8,13 @@ import {
   getOrganizerEventById,
   getOrganizerEvents,
   updateEvent,
+  backend,
 } from "@/lib/api";
 import { fmtINR, getErrorMessage } from "@/lib/utils";
+import ChatBox from "@/components/ChatBox";
+import { io } from "socket.io-client";
+
+const SOCKET_URL = import.meta.env.VITE_BACKEND_BASE_URL?.replace("/api", "") || "http://localhost:8080";
 
 const cx = (...xs) => xs.filter(Boolean).join(" ");
 const STATUS_CLASS = {
@@ -206,6 +211,25 @@ export default function OrganizerDashboard({ user }) {
   const [submitting, setSubmitting] = useState(false);
   const [filterType, setFilterType] = useState("");
   const [search, setSearch] = useState("");
+  const [eventConversations, setEventConversations] = useState([]);
+  const [activeChatSponsor, setActiveChatSponsor] = useState(null);
+  const [unreadCounts, setUnreadCounts] = useState({});
+
+  useEffect(() => {
+    if (!user?._id) return;
+    const s = io(SOCKET_URL, { withCredentials: true });
+    s.on("connect", () => s.emit("join_user_room", user._id));
+    
+    s.on("new_notification", (data) => {
+      setUnreadCounts(prev => ({
+        ...prev,
+        [data.conversationId]: (prev[data.conversationId] || 0) + 1
+      }));
+      toast.success("New message from sponsor!");
+    });
+
+    return () => s.disconnect();
+  }, [user?._id]);
 
   const loadEvents = async (type = filterType) => {
     try {
@@ -249,9 +273,13 @@ export default function OrganizerDashboard({ user }) {
 
   const openEvent = async (event) => {
     setSelectedEvent(event);
+    setActiveChatSponsor(null);
     try {
       const res = await getOrganizerEventById(event._id);
       setEventDetail(res?.data || res);
+      
+      const convRes = await backend.get(`/chat/event/${event._id}`);
+      setEventConversations(convRes.data || []);
     } catch (err) {
       toast.error(getErrorMessage(err));
     }
@@ -410,7 +438,51 @@ export default function OrganizerDashboard({ user }) {
                 <button className="btn-secondary" onClick={() => setModalMode("edit")}>Edit event</button>
                 <button className="btn-danger" onClick={handleDelete}>Delete event</button>
               </div>
+              
+              <div className="mt-8 pt-8 border-t border-white/10">
+                <div className="field-label">Sponsor Chats</div>
+                {eventConversations.length === 0 ? (
+                  <p className="muted leading-7 mt-3">No sponsors have reached out for this event yet.</p>
+                ) : (
+                  <div className="space-y-3 mt-4">
+                    {eventConversations.map(conv => (
+                      <div key={conv._id} className="soft-card flex items-center justify-between p-4 relative overflow-visible">
+                        <div>
+                          <div className="font-bold flex items-center gap-2">
+                            {conv.sponsorId?.username || "Unknown Sponsor"}
+                            {unreadCounts[conv._id] > 0 && (
+                              <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-bounce">
+                                {unreadCounts[conv._id]}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm muted">{conv.lastMessage || "No messages yet"}</div>
+                        </div>
+                        <button 
+                          className="btn-secondary" 
+                          onClick={() => {
+                            setActiveChatSponsor(conv.sponsorId?._id);
+                            setUnreadCounts(prev => ({ ...prev, [conv._id]: 0 }));
+                          }}
+                        >
+                          Chat
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
+            
+            {activeChatSponsor && (
+              <ChatBox
+                eventId={detail._id}
+                sponsorId={activeChatSponsor}
+                organizerId={user?._id}
+                currentUserRole="organizer"
+                onClose={() => setActiveChatSponsor(null)}
+              />
+            )}
           </div>
         </section>
       ) : null}

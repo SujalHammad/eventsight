@@ -16,6 +16,10 @@ import {
 } from "@/lib/api";
 import { coldEmailToText, fmtINR, getErrorMessage } from "@/lib/utils";
 import ResultsPanel from "@/components/results/ResultsPanel";
+import ChatBox from "@/components/ChatBox";
+import { io } from "socket.io-client";
+
+const SOCKET_URL = import.meta.env.VITE_BACKEND_BASE_URL?.replace("/api", "") || "http://localhost:8080";
 
 const cx = (...xs) => xs.filter(Boolean).join(" ");
 
@@ -340,6 +344,35 @@ export default function SponsorDashboard({ user }) {
   const [workspaceLoading, setWorkspaceLoading] = useState(false);
   const [predicting, setPredicting] = useState(false);
   const [submittingFeedback, setSubmittingFeedback] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [globalSocket, setGlobalSocket] = useState(null);
+
+  useEffect(() => {
+    if (!user?._id) return;
+    const s = io(SOCKET_URL, { withCredentials: true });
+    
+    s.on("connect", () => {
+      s.emit("join_user_room", user._id);
+    });
+
+    s.on("new_notification", (data) => {
+      console.log("GLOBAL NOTIFICATION RECEIVED 🔔", data);
+      
+      // Play sound
+      const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3");
+      audio.play().catch(() => {});
+
+      toast.success("New message from organizer!", {
+        icon: '💬',
+        duration: 4000
+      });
+
+      setUnreadCount(prev => prev + 1);
+    });
+
+    setGlobalSocket(s);
+    return () => s.disconnect();
+  }, [user?._id]);
 
   const loadBase = async () => {
     setLoading(true);
@@ -727,9 +760,31 @@ export default function SponsorDashboard({ user }) {
                 ["detail", "Event details"],
                 ["prediction", "Prediction"],
                 ["feedback", "Feedback"],
+                ["chat", "Chat"],
               ].map(([id, label]) => (
-                <button key={id} className={cx("tab-pill", tab === id && "active")} onClick={() => setTab(id)}>
-                  {label}
+                <button
+                  key={id} 
+                  className={cx(
+                    "tab-pill relative transition-all duration-300", 
+                    tab === id && "active",
+                    id === "chat" && unreadCount > 0 && "bg-red-500/10 border-red-500/50 shadow-[0_0_15px_rgba(239,68,68,0.4)] animate-pulse"
+                  )} 
+                  onClick={() => {
+                    setTab(id);
+                    if (id === "chat") setUnreadCount(0);
+                  }}
+                >
+                  <span className={cx(id === "chat" && unreadCount > 0 && "text-red-500 font-bold")}>
+                    {label}
+                  </span>
+                  {id === "chat" && unreadCount > 0 && (
+                    <span className="absolute -top-3 -right-2 flex items-center justify-center scale-110">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex items-center justify-center rounded-full h-6 w-6 bg-red-600 text-[11px] text-white font-black shadow-lg">
+                        {unreadCount}
+                      </span>
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -809,6 +864,14 @@ export default function SponsorDashboard({ user }) {
                                 onClick={() => copyToClipboard(organizerEmail, "Email copied")}
                               >
                                 Copy email
+                              </button>
+                            </div>
+                            <div className="mt-6 pt-6 border-t border-white/10">
+                              <button
+                                className="btn-secondary w-full"
+                                onClick={() => setTab("chat")}
+                              >
+                                Chat directly
                               </button>
                             </div>
                           </>
@@ -990,6 +1053,20 @@ export default function SponsorDashboard({ user }) {
               </div>
             </div>
           ) : null}
+
+          <div className={tab === "chat" ? "block w-full h-[600px] mt-5" : "hidden"}>
+            {selectedEvent && (
+              <ChatBox
+                eventId={selectedEvent._id}
+                sponsorId={user?._id}
+                organizerId={eventDetail?.organizerInfo?._id || eventDetail?.organizer?._id || selectedEvent?.organizer}
+                currentUserRole="sponsor"
+                embedded={true}
+                isActive={tab === "chat"}
+                onUnreadChange={(isUnread) => isUnread ? setUnreadCount(prev => prev + 1) : setUnreadCount(0)}
+              />
+            )}
+          </div>
         </section>
       ) : null}
     </div>
