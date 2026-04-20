@@ -59,6 +59,22 @@ export function getErrorMessage(err) {
   );
 }
 
+export function resolveMediaUrl(url) {
+  if (!url || typeof url !== "string") return "";
+  if (/^(https?:)?\/\//i.test(url) || url.startsWith("data:") || url.startsWith("blob:")) {
+    return url;
+  }
+
+  const backendOrigin = (import.meta.env.VITE_BACKEND_BASE_URL || "http://localhost:8080/api")
+    .replace(/\/api\/?$/, "");
+
+  let normalized = url.replace(/\\/g, "/").trim();
+  normalized = normalized.replace(/^\.?\//, "");
+  if (normalized.startsWith("public/")) normalized = normalized.slice("public/".length);
+
+  return `${backendOrigin}/${normalized}`;
+}
+
 export function bandStyles(band) {
   switch (band) {
     case "HIGH":

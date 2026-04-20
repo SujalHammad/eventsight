@@ -7,9 +7,9 @@ const { upload } = require("../middleware/multer.middleware");
 const sponsorRoute=express.Router();
 
 //sponsor profile
-sponsorRoute.post("/profileCreate",verifyJwt,authorizeRole("sponsor"),upload.single("logo"),createSponsorProfile); 
+sponsorRoute.post("/profileCreate",verifyJwt,authorizeRole("sponsor"),upload.any(),createSponsorProfile); 
 sponsorRoute.get("/profileFetch",verifyJwt,authorizeRole("sponsor"),getSponsorProfile);
-sponsorRoute.patch("/profileUpdate",verifyJwt,authorizeRole("sponsor"),upload.single("logo"),updateSponsorProfile); 
+sponsorRoute.patch("/profileUpdate",verifyJwt,authorizeRole("sponsor"),upload.any(),updateSponsorProfile); 
 sponsorRoute.delete("/profileDelete",verifyJwt,authorizeRole("sponsor"),deleteSponsorProfile);
 
 // event fetch 

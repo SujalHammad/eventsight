@@ -4,7 +4,8 @@ import axios from "axios";
 export const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000";
 
 // Node backend base URL (main app talks only to this)
-export const BACKEND_BASE = import.meta.env.VITE_BACKEND_BASE_URL || "http://localhost:8080/api/";
+const rawBase = import.meta.env.VITE_BACKEND_BASE_URL || "http://localhost:8080/api";
+export const BACKEND_BASE = rawBase.endsWith("/") ? rawBase : rawBase + "/";
 
 // Secret API Key for ML service (no hardcoded fallback)
 export const API_KEY = import.meta.env.VITE_SERVICE_API_KEY;
@@ -182,9 +183,7 @@ export async function deleteEvent(eventId) {
 // ─────────────────────────────
 
 export async function createSponsorProfile(formData) {
-  const { data } = await backend.post("sponsor/profileCreate", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  const { data } = await backend.post("sponsor/profileCreate", formData);
   return data;
 }
 
@@ -194,9 +193,7 @@ export async function getSponsorProfile() {
 }
 
 export async function updateSponsorProfile(formData) {
-  const { data } = await backend.patch("sponsor/profileUpdate", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  const { data } = await backend.patch("sponsor/profileUpdate", formData);
   return data;
 }
 

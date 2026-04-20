@@ -36,58 +36,170 @@ export default function RegisterPage() {
 
   return (
     <AppShell user={null}>
-      <div className="grid lg:grid-cols-[1.05fr_.95fr] gap-6 items-stretch min-h-[calc(100vh-140px)]">
-        <section className="hero-panel flex flex-col justify-between">
-          <div>
-            <div className="section-kicker mb-6">Join EventSight</div>
-            <h1 className="section-title !text-[clamp(2.3rem,5vw,4.4rem)] max-w-3xl mb-6">
-              Create a polished workspace for event sponsors and organizers.
-            </h1>
-            <p className="section-subtitle text-lg max-w-2xl leading-8">
-              Pick your role, verify your email, and start using one clean product instead of scattered tools and spreadsheets.
-            </p>
-          </div>
+      {/* Full-height centering wrapper */}
+      <div style={{ minHeight: "calc(100vh - 110px)", display: "flex", alignItems: "center", justifyContent: "center" }}>
 
-          <div className="grid md:grid-cols-2 gap-4 mt-8">
-            {ROLES.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setRole(item.id)}
-                className={item.id === role ? "soft-card text-left ring-2 ring-[var(--accent)]" : "soft-card text-left"}
-              >
-                <div className="font-extrabold text-lg mb-2">{item.title}</div>
-                <div className="muted text-sm">{item.desc}</div>
-              </button>
-            ))}
-          </div>
-        </section>
+        {/* Constrained centered grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "80px", width: "100%", maxWidth: "1100px", height: "600px" }}>
 
-        <section className="hero-panel flex items-center justify-center">
-          <div className="w-full max-w-md">
-            <div className="section-kicker mb-3">Create account</div>
-            <h2 className="section-title mb-2">Register as {role === "sponsor" ? "Sponsor" : "Organizer"}</h2>
-            <p className="section-subtitle mb-8">We will send an OTP to verify your email.</p>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="field-label">Username</label>
-                <input name="username" className="input-field" required placeholder="choose a username" />
+          {/* ─── LEFT: Role Selection Hero ─── */}
+          <div style={{
+            background: "linear-gradient(140deg, #6d5efc 0%, #4338ca 55%, #1e1b4b 100%)",
+            borderRadius: "20px",
+            padding: "44px 40px",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            color: "#fff",
+            overflow: "hidden",
+          }}>
+            <div>
+              <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", opacity: 0.6, marginBottom: "12px" }}>
+                Join SponsorWise
+              </p>
+              <h1 style={{ fontSize: "1.9rem", fontWeight: 800, lineHeight: 1.25, marginBottom: "16px", color: "#fff" }}>
+                Create a polished workspace for event sponsors and organizers.
+              </h1>
+              <p style={{ fontSize: "0.95rem", lineHeight: 1.65, opacity: 0.75, marginBottom: "32px", maxWidth: "380px" }}>
+                Pick your role, verify your email, and start using one clean product instead of scattered tools and spreadsheets.
+              </p>
+
+              {/* Role cards selection */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginTop: "16px" }}>
+                {ROLES.map((item) => {
+                  const isActive = item.id === role;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setRole(item.id)}
+                      style={{
+                        background: isActive ? "#fff" : "rgba(255,255,255,0.08)",
+                        color: isActive ? "#4338ca" : "#fff",
+                        border: "none",
+                        borderRadius: "16px",
+                        padding: "24px 18px",
+                        textAlign: "left",
+                        cursor: "pointer",
+                        transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                        transform: isActive ? "translateY(-4px)" : "none",
+                        boxShadow: isActive ? "0 12px 30px rgba(0,0,0,0.15)" : "none",
+                        position: "relative",
+                        outline: "none",
+                      }}
+                    >
+                      {isActive && (
+                        <div style={{
+                          position: "absolute",
+                          top: "14px",
+                          right: "14px",
+                          width: "20px",
+                          height: "20px",
+                          borderRadius: "50%",
+                          background: "#4338ca",
+                          color: "#fff",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "12px",
+                          fontWeight: 900
+                        }}>✓</div>
+                      )}
+                      <div style={{ fontWeight: 800, fontSize: "1.1rem", marginBottom: "8px" }}>{item.title}</div>
+                      <div style={{ fontSize: "0.8rem", opacity: isActive ? 0.8 : 0.65, lineHeight: 1.4 }}>{item.desc}</div>
+                    </button>
+                  );
+                })}
               </div>
-              <div>
-                <label className="field-label">Email</label>
-                <input name="email" type="email" className="input-field" required placeholder="you@example.com" />
-              </div>
-              <div>
-                <label className="field-label">Password</label>
-                <input name="password" type="password" className="input-field" required placeholder="••••••••" />
-              </div>
-              <button className="btn-primary w-full" disabled={loading}>{loading ? "Creating account..." : "Create account"}</button>
-            </form>
-            <div className="mt-6 text-sm">
-              <Link to="/" className="font-bold text-[var(--accent)]">← Back to sign in</Link>
+            </div>
+
+            <div style={{ display: "flex", gap: "32px", paddingTop: "24px", borderTop: "1px solid rgba(255,255,255,0.15)" }}>
+              {[["Fast", "Verification"], ["Secure", "Access"], ["Free", "Trial"]].map(([val, label]) => (
+                <div key={val}>
+                  <div style={{ fontSize: "1.25rem", fontWeight: 800 }}>{val}</div>
+                  <div style={{ fontSize: "0.7rem", opacity: 0.6, marginTop: "4px" }}>{label}</div>
+                </div>
+              ))}
             </div>
           </div>
-        </section>
+
+          {/* ─── RIGHT: Register Form ─── */}
+          <div style={{
+            background: "var(--surface)",
+            borderRadius: "20px",
+            boxShadow: "0 4px 24px rgba(15,23,42,0.08)",
+            padding: "36px 38px",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+          }}>
+            <p style={{ fontSize: "12px", fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--accent)", marginBottom: "12px" }}>
+              Create account
+            </p>
+            <h2 style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--text)", lineHeight: 1.25, marginBottom: "8px" }}>
+              Register as {role === "sponsor" ? "Sponsor" : "Organizer"}
+            </h2>
+            <p style={{ fontSize: "0.9rem", color: "var(--text-soft)", lineHeight: 1.6, marginBottom: "32px" }}>
+              We will send an OTP to verify your email.
+            </p>
+
+            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: "5px" }}>
+                  Username
+                </label>
+                <input
+                  name="username"
+                  className="input-field"
+                  style={{ padding: "14px 16px", fontSize: "0.92rem", borderRadius: "12px" }}
+                  placeholder="choose a username"
+                  required
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: "5px" }}>
+                  Email
+                </label>
+                <input
+                  name="email"
+                  type="email"
+                  className="input-field"
+                  style={{ padding: "14px 16px", fontSize: "0.92rem", borderRadius: "12px" }}
+                  placeholder="you@example.com"
+                  required
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: "5px" }}>
+                  Password
+                </label>
+                <input
+                  name="password"
+                  type="password"
+                  className="input-field"
+                  style={{ padding: "14px 16px", fontSize: "0.92rem", borderRadius: "12px" }}
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn-primary"
+                style={{ width: "100%", padding: "13px", fontSize: "0.95rem", fontWeight: 700, marginTop: "8px", borderRadius: "12px" }}
+              >
+                {loading ? "Creating account…" : "Create account"}
+              </button>
+            </form>
+
+            <div style={{ marginTop: "32px", paddingTop: "20px", borderTop: "1px solid var(--line)", fontSize: "0.85rem" }}>
+              <Link to="/" style={{ fontWeight: 700, color: "var(--accent)", textDecoration: "none" }}>
+                ← Back to sign in
+              </Link>
+            </div>
+          </div>
+
+        </div>
       </div>
     </AppShell>
   );

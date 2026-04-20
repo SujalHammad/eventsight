@@ -1,66 +1,104 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import {
   createEvent,
-  deleteEvent,
   fetchCities,
   fetchEventCategories,
-  getOrganizerEventById,
   getOrganizerEvents,
-  updateEvent,
   backend,
 } from "@/lib/api";
-import { fmtINR, getErrorMessage } from "@/lib/utils";
-import ChatBox from "@/components/ChatBox";
-import { io } from "socket.io-client";
-
-const SOCKET_URL = import.meta.env.VITE_BACKEND_BASE_URL?.replace("/api", "") || "http://localhost:8080";
+import { fmtINR, getErrorMessage, resolveMediaUrl } from "@/lib/utils";
 
 const cx = (...xs) => xs.filter(Boolean).join(" ");
-const STATUS_CLASS = {
-  upcoming: "status-chip status-upcoming",
-  completed: "status-chip status-completed",
-  cancelled: "status-chip status-cancelled",
-};
 const PLATFORMS = ["instagram", "youtube", "twitter", "facebook", "linkedin", "other"];
 
-function StatCard({ label, value, hint }) {
+function StatCard({ label, value, hint, icon }) {
   return (
-    <div className="stat-card">
-      <div className="field-label">{label}</div>
-      <div className="text-4xl font-black">{value}</div>
-      {hint ? <div className="faint text-sm mt-2">{hint}</div> : null}
+    <div style={{
+      position: "relative",
+      overflow: "hidden",
+      borderRadius: "24px",
+      padding: "24px",
+      background: "rgba(255, 255, 255, 0.08)",
+      backdropFilter: "blur(12px)",
+      border: "1px solid rgba(255, 255, 255, 0.12)",
+      color: "#fff",
+      textAlign: "center"
+    }}>
+      <div style={{ position: "relative", zIndex: 1 }}>
+        <div className="flex items-center justify-center gap-2 mb-3">
+          <span style={{ fontSize: "1.2rem" }}>{icon}</span>
+          <div style={{
+            fontSize: "10px",
+            fontWeight: 800,
+            textTransform: "uppercase",
+            letterSpacing: "0.15em",
+            opacity: 0.6
+          }}>{label}</div>
+        </div>
+        <div className="text-4xl font-black">{value}</div>
+        {hint ? <div style={{ opacity: 0.5, fontSize: "0.85rem", marginTop: "8px" }}>{hint}</div> : null}
+      </div>
+      <div style={{
+        position: "absolute",
+        top: "-10%",
+        right: "-5%",
+        fontSize: "5.5rem",
+        opacity: 0.04,
+        fontWeight: 900,
+        pointerEvents: "none"
+      }}>
+        {icon}
+      </div>
     </div>
   );
 }
 
-function Metric({ label, value }) {
-  return (
-    <div className="soft-card">
-      <div className="field-label">{label}</div>
-      <div className="text-3xl font-black">{value ?? "—"}</div>
-    </div>
-  );
-}
-
-function EventTile({ event, active, onClick }) {
+function EventCard({ event, onClick }) {
   const status = event.status || (new Date(event.date) < new Date() ? "completed" : "upcoming");
   return (
-    <button type="button" onClick={onClick} className={cx("event-card text-left w-full", active && "active")}>
-      <div className="flex gap-4 items-start">
-        <img src={event.thumbnail || "https://placehold.co/160x110?text=Event"} alt={event.eventName} className="w-28 h-20 rounded-2xl object-cover flex-shrink-0" />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <div className="text-2xl font-black truncate">{event.eventName}</div>
-              <div className="muted mt-1">{event.eventCategory?.name || "Event"} · {event.location}</div>
+    <button
+      type="button"
+      onClick={onClick}
+      className="event-card text-left w-full !p-0"
+      style={{ overflow: "hidden", display: "block" }}
+    >
+      <div className="relative">
+        <img
+          src={resolveMediaUrl(event.thumbnail) || "https://placehold.co/400x200?text=Event"}
+          alt={event.eventName}
+          className="w-full h-44 object-cover"
+        />
+        <div className="absolute top-3 right-3">
+          <span
+            className={cx(
+              "px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider backdrop-blur-md shadow-lg",
+              status === "completed" ? "bg-indigo-500/80 text-white" : "bg-emerald-500/80 text-white"
+            )}
+          >
+            {status}
+          </span>
+        </div>
+      </div>
+
+      <div className="p-5">
+        <div className="flex justify-between items-start gap-3">
+          <div className="min-w-0">
+            <div className="text-xl font-black truncate">{event.eventName}</div>
+            <div className="muted text-sm mt-1 flex items-center gap-1.5">
+              <span className="w-1 h-1 rounded-full bg-[var(--accent)]" />
+              {event.location}
             </div>
-            <span className={STATUS_CLASS[status] || STATUS_CLASS.upcoming}>{status}</span>
           </div>
-          <div className="flex flex-wrap gap-3 mt-4 text-sm faint">
-            <span>Ask ₹{fmtINR(event.ask)}</span>
-            <span>Capacity {event.capacity}</span>
-            <span>{new Date(event.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span>
+        </div>
+
+        <div className="flex flex-wrap gap-2 mt-4">
+          <div className="bg-[var(--bg-soft)] px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase text-[var(--text-soft)]">
+            ₹{fmtINR(event.ask)}
+          </div>
+          <div className="bg-[var(--bg-soft)] px-2.5 py-1 rounded-lg text-[11px] font-bold uppercase text-[var(--text-soft)]">
+            {event.eventCategory?.name || "Event"}
           </div>
         </div>
       </div>
@@ -74,126 +112,128 @@ function SocialRows({ initial }) {
   return (
     <div className="md:col-span-2">
       <div className="flex items-center justify-between mb-3">
-        <label className="field-label !mb-0">Social media accounts</label>
-        <button type="button" className="font-bold text-[var(--accent)]" onClick={() => setRows((prev) => [...prev, { id: Date.now(), platform: "instagram", link: "", followers: "" }])}>+ Add</button>
+        <label className="field-label !mb-0">Social media channels</label>
+        <button type="button" className="font-extrabold text-xs uppercase tracking-widest text-[var(--accent)] px-3 py-1 bg-[color:rgba(109,94,252,0.1)] rounded-lg" onClick={() => setRows((prev) => [...prev, { id: Date.now(), platform: "instagram", link: "", followers: "" }])}>+ Add channel</button>
       </div>
       <div className="space-y-3">
         {rows.map((row) => (
-          <div key={row.id} className="grid grid-cols-[120px_1fr_130px_40px] gap-3 items-center">
+          <div key={row.id} className="grid grid-cols-[140px_1fr_130px_45px] gap-3 items-center">
             <select value={row.platform} onChange={(e) => setRows((prev) => prev.map((item) => item.id === row.id ? { ...item, platform: e.target.value } : item))} className="select-field">
-              {PLATFORMS.map((platform) => <option key={platform} value={platform}>{platform}</option>)}
+              {PLATFORMS.map((p) => <option key={p} value={p}>{p}</option>)}
             </select>
-            <input value={row.link} onChange={(e) => setRows((prev) => prev.map((item) => item.id === row.id ? { ...item, link: e.target.value } : item))} className="input-field" placeholder="Profile URL" />
-            <input value={row.followers} onChange={(e) => setRows((prev) => prev.map((item) => item.id === row.id ? { ...item, followers: e.target.value } : item))} className="input-field" type="number" min="0" placeholder="Followers" />
-            <button type="button" className="btn-danger !p-0 !h-11 !rounded-2xl" onClick={() => setRows((prev) => prev.filter((item) => item.id !== row.id))}>×</button>
+            <input value={row.link} onChange={(e) => setRows((prev) => prev.map((item) => item.id === row.id ? { ...item, link: e.target.value } : item))} className="input-field" placeholder="Profile link" />
+            <input value={row.followers} onChange={(e) => setRows((prev) => prev.map((item) => item.id === row.id ? { ...item, followers: e.target.value } : item))} className="input-field" type="number" placeholder="Reach" />
+            <button type="button" className="btn-danger !p-0 !h-11 !rounded-2xl flex items-center justify-center opacity-60 hover:opacity-100 transition-opacity" onClick={() => setRows((prev) => prev.filter((item) => item.id !== row.id))}>×</button>
           </div>
         ))}
       </div>
-      <input type="hidden" name="socialMediaAccount" value={JSON.stringify(rows.filter((row) => row.link).map((row) => ({ platform: row.platform, link: row.link, followers: Number(row.followers) || 0 })))} />
+      <input type="hidden" name="socialMediaAccount" value={JSON.stringify(rows.filter((r) => r.link).map((r) => ({ platform: r.platform, link: r.link, followers: Number(r.followers) || 0 })))} />
     </div>
   );
 }
 
-function EventForm({ event, categories, cities, onSubmit, onClose, submitting }) {
-  const [preview, setPreview] = useState(event?.thumbnail || null);
+function EventForm({ categories, cities, onSubmit, onClose, submitting }) {
+  const [preview, setPreview] = useState(null);
 
+  const handleFile = (e) => {
+    const file = e.target.files[0];
+    if (file) setPreview(URL.createObjectURL(file));
+  };
   return (
     <div className="modal-overlay">
-      <div className="modal-card">
+      <div className="modal-card animate-fade-up">
         <div className="modal-header">
           <div>
-            <div className="section-kicker mb-2">{event ? "Edit event" : "Create event"}</div>
-            <h2 className="section-title !text-[clamp(2rem,4vw,3rem)]">{event ? event.eventName : "Create a new event"}</h2>
-            <p className="section-subtitle mt-3 max-w-3xl">
-              Set up the event details, sponsorship ask, and social reach in one polished form.
-            </p>
+            <h3 className="text-3xl font-black">Create New Event</h3>
+            <p className="muted mt-1">Configure your event metrics and discoverable details.</p>
           </div>
           <button type="button" className="btn-secondary" onClick={onClose}>Close</button>
         </div>
 
-        <form onSubmit={onSubmit} className="space-y-8">
+        <form onSubmit={onSubmit} className="space-y-6" encType="multipart/form-data">
           <div className="modal-section-grid">
             <div>
               <label className="field-label">Event name</label>
-              <input name="eventName" defaultValue={event?.eventName || ""} required className="input-field" />
+              <input name="eventName" required className="input-field" placeholder="e.g. TechConf 2026" />
             </div>
             <div>
               <label className="field-label">Category</label>
-              <select name="eventCategory" defaultValue={event?.eventCategory?._id || event?.eventCategory || ""} required className="select-field">
+              <select name="eventCategory" required className="select-field">
                 <option value="">Select category</option>
                 {categories.map((cat) => <option key={cat._id} value={cat._id}>{cat.name}</option>)}
               </select>
             </div>
-            <div className="md:col-span-2">
-              <label className="field-label">Description</label>
-              <textarea name="eventDescription" defaultValue={event?.eventDescription || ""} rows={5} required className="textarea-field" />
-            </div>
+          </div>
+
+          <div>
+             <label className="field-label">Description</label>
+             <textarea name="eventDescription" rows={3} required className="textarea-field" placeholder="Tell sponsors what makes this event unique..." />
           </div>
 
           <div className="modal-section-grid">
             <div>
               <label className="field-label">City / location</label>
-              <select name="location" defaultValue={event?.location || ""} required className="select-field">
+              <select name="location" required className="select-field">
                 <option value="">Select city</option>
                 {cities.map((city) => <option key={city._id} value={city.name}>{city.name}</option>)}
               </select>
             </div>
             <div>
               <label className="field-label">Event date</label>
-              <input name="date" type="date" defaultValue={event?.date ? new Date(event.date).toISOString().slice(0, 10) : ""} required className="input-field" />
-            </div>
-            <div>
-              <label className="field-label">Capacity</label>
-              <input name="capacity" type="number" min="1" defaultValue={event?.capacity || ""} required className="input-field" />
-            </div>
-            <div className="flex items-center gap-3 pt-8">
-              <input name="isIndoor" type="checkbox" defaultChecked={Boolean(event?.isIndoor)} className="w-5 h-5 accent-[var(--accent)]" />
-              <label className="font-semibold">Indoor event</label>
+              <input name="date" type="date" required className="input-field" />
             </div>
           </div>
 
           <div className="modal-section-grid">
-            <div>
-              <label className="field-label">Sponsorship ask</label>
-              <input name="ask" type="number" min="0" defaultValue={event?.ask || ""} required className="input-field" />
-            </div>
-            <div>
-              <label className="field-label">Ticket price</label>
-              <input name="ticketPrice" type="number" min="0" defaultValue={event?.ticketPrice || ""} required className="input-field" />
-            </div>
-            <div>
-              <label className="field-label">Marketing budget</label>
-              <input name="marketingBudget" type="number" min="0" defaultValue={event?.marketingBudget || ""} required className="input-field" />
-            </div>
-            <div>
-              <label className="field-label">Thumbnail</label>
-              {preview ? <img src={preview} alt="Preview" className="modal-preview" /> : null}
-              <input
-                name="thumbnail"
-                type="file"
-                accept="image/*"
-                className="input-field file:mr-4 file:rounded-xl file:border-0 file:bg-[var(--accent)] file:px-4 file:py-2 file:text-white file:font-bold"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) setPreview(URL.createObjectURL(file));
-                }}
-              />
+             <div>
+                <label className="field-label">Capacity</label>
+                <input name="capacity" type="number" min="1" required className="input-field" />
+             </div>
+             <div>
+                <label className="field-label">Ask (₹)</label>
+                <input name="ask" type="number" min="0" required className="input-field" />
+             </div>
+          </div>
+
+          <div className="modal-section-grid">
+             <div>
+                <label className="field-label">Ticket Price (₹)</label>
+                <input name="ticketPrice" type="number" min="0" defaultValue={0} required className="input-field" />
+             </div>
+             <div>
+                <label className="field-label">Marketing Budget (₹)</label>
+                <input name="marketingBudget" type="number" min="0" defaultValue={0} required className="input-field" />
+             </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input name="isIndoor" type="checkbox" className="w-5 h-5 accent-[var(--accent)]" id="indoor-check" />
+            <label htmlFor="indoor-check" className="text-sm font-bold opacity-70">Indoor event</label>
+          </div>
+
+          <SocialRows />
+
+          <div className="md:col-span-2">
+            <label className="field-label">Thumbnail image</label>
+            <div className="flex gap-4 items-center mb-2">
+               <div className="w-20 h-20 rounded-xl bg-slate-100 flex items-center justify-center overflow-hidden border">
+                  {preview ? (
+                    <img src={preview} className="w-full h-full object-cover" />
+                  ) : <span className="text-xs muted">No image</span>}
+               </div>
+               <input 
+                 name="thumbnail" 
+                 type="file" 
+                 accept="image/*" 
+                 onChange={handleFile} 
+                 className="input-field flex-1" 
+               />
             </div>
           </div>
 
-          <div className="modal-social-block">
-            <div>
-              <div className="section-kicker mb-2">Audience signals</div>
-              <h3 className="text-2xl font-black">Social reach</h3>
-              <p className="section-subtitle mt-2">Add the social accounts you want sponsors to see in the event workspace.</p>
-            </div>
-            <SocialRows initial={event?.socialMediaAccount || []} />
-          </div>
-
-          <div className="modal-actions">
-            <button className="btn-primary" disabled={submitting}>{submitting ? "Saving..." : event ? "Save event" : "Create event"}</button>
-            <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-          </div>
+          <button type="submit" disabled={submitting} className="btn-primary w-full py-4 text-lg">
+            {submitting ? "Creating..." : "Launch Event Listing"}
+          </button>
         </form>
       </div>
     </div>
@@ -201,302 +241,190 @@ function EventForm({ event, categories, cities, onSubmit, onClose, submitting })
 }
 
 export default function OrganizerDashboard({ user }) {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState([]);
+  const [search, setSearch] = useState("");
+  const [filterType, setFilterType] = useState("");
+  const [modalMode, setModalMode] = useState(null);
   const [categories, setCategories] = useState([]);
   const [cities, setCities] = useState([]);
-  const [selectedEvent, setSelectedEvent] = useState(null);
-  const [eventDetail, setEventDetail] = useState(null);
-  const [modalMode, setModalMode] = useState(null); // create/edit
   const [submitting, setSubmitting] = useState(false);
-  const [filterType, setFilterType] = useState("");
-  const [search, setSearch] = useState("");
-  const [eventConversations, setEventConversations] = useState([]);
-  const [activeChatSponsor, setActiveChatSponsor] = useState(null);
-  const [unreadCounts, setUnreadCounts] = useState({});
 
-  useEffect(() => {
-    if (!user?._id) return;
-    const s = io(SOCKET_URL, { withCredentials: true });
-    s.on("connect", () => s.emit("join_user_room", user._id));
-    
-    s.on("new_notification", (data) => {
-      setUnreadCounts(prev => ({
-        ...prev,
-        [data.conversationId]: (prev[data.conversationId] || 0) + 1
-      }));
-      toast.success("New message from sponsor!");
-    });
-
-    return () => s.disconnect();
-  }, [user?._id]);
-
-  const loadEvents = async (type = filterType) => {
+  const loadData = async () => {
+    setLoading(true);
     try {
-      const res = await getOrganizerEvents({ page: 1, limit: 100, ...(type ? { type } : {}) });
-      const payload = res?.data || res;
-      setEvents(payload?.events || payload?.data?.events || []);
+      const [evtsRes, catRes, cityRes] = await Promise.all([
+        getOrganizerEvents({ page: 1, limit: 100 }),
+        fetchEventCategories(),
+        fetchCities(),
+      ]);
+      setEvents(evtsRes?.data?.events || evtsRes?.data || []);
+      setCategories(catRes);
+      setCities(cityRes);
     } catch (err) {
       toast.error(getErrorMessage(err));
     }
+    setLoading(false);
   };
 
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      try {
-        const [eventsRes, catsRes, citiesRes] = await Promise.allSettled([
-          getOrganizerEvents({ page: 1, limit: 100 }),
-          fetchEventCategories(),
-          fetchCities(),
-        ]);
-        if (eventsRes.status === "fulfilled") {
-          const payload = eventsRes.value?.data || eventsRes.value;
-          setEvents(payload?.events || payload?.data?.events || []);
-        }
-        if (catsRes.status === "fulfilled") setCategories(Array.isArray(catsRes.value) ? catsRes.value : catsRes.value?.data || []);
-        if (citiesRes.status === "fulfilled") setCities(Array.isArray(citiesRes.value) ? citiesRes.value : citiesRes.value?.data || []);
-      } catch {}
-      setLoading(false);
-    })();
+    loadData();
   }, []);
-
-  useEffect(() => {
-    loadEvents(filterType);
-  }, [filterType]);
-
-  const filteredEvents = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return events;
-    return events.filter((event) => [event.eventName, event.location, event.eventCategory?.name].some((v) => String(v || "").toLowerCase().includes(q)));
-  }, [events, search]);
-
-  const openEvent = async (event) => {
-    setSelectedEvent(event);
-    setActiveChatSponsor(null);
-    try {
-      const res = await getOrganizerEventById(event._id);
-      setEventDetail(res?.data || res);
-      
-      const convRes = await backend.get(`/chat/event/${event._id}`);
-      setEventConversations(convRes.data || []);
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    }
-  };
 
   const submitForm = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    const form = new FormData(e.currentTarget);
-    const fd = new FormData();
-    ["eventName", "eventCategory", "eventDescription", "location", "capacity", "date", "ask", "ticketPrice", "marketingBudget", "socialMediaAccount"].forEach((key) => fd.append(key, form.get(key) || ""));
-    fd.append("isIndoor", form.get("isIndoor") ? "true" : "false");
-    if (form.get("thumbnail")?.size) fd.append("thumbnail", form.get("thumbnail"));
-
+    const rawForm = e.currentTarget;
+    const form = new FormData();
+    // Manually append to be 100% sure
+    const fields = ["eventName", "eventCategory", "eventDescription", "location", "capacity", "date", "ask", "ticketPrice", "marketingBudget", "socialMediaAccount"];
+    fields.forEach(f => {
+      const val = rawForm.elements[f]?.value;
+      if (val !== undefined) form.append(f, val);
+    });
+    if (rawForm.elements.isIndoor) form.append("isIndoor", rawForm.elements.isIndoor.checked);
+    if (rawForm.elements.thumbnail?.files?.[0]) {
+      form.append("thumbnail", rawForm.elements.thumbnail.files[0]);
+    }
+    form.append("_v", Date.now()); // Ensure body is never empty
+    
     try {
-      if (modalMode === "create") {
-        const res = await createEvent(fd);
-        toast.success("Event created");
-        await loadEvents();
-        setModalMode(null);
-        if (res?.data || res) openEvent(res?.data || res);
-      } else if (modalMode && selectedEvent?._id) {
-        const res = await updateEvent(selectedEvent._id, fd);
-        toast.success("Event updated");
-        await loadEvents();
-        setModalMode(null);
-        setEventDetail(res?.data || res);
-      }
+      await createEvent(form);
+      toast.success("Event created successfully");
+      setModalMode(null);
+      loadData();
     } catch (err) {
       toast.error(getErrorMessage(err));
     }
     setSubmitting(false);
   };
 
-  const handleDelete = async () => {
-    if (!selectedEvent?._id) return;
-    if (!window.confirm(`Delete ${selectedEvent.eventName}?`)) return;
-    try {
-      await deleteEvent(selectedEvent._id);
-      toast.success("Event deleted");
-      setSelectedEvent(null);
-      setEventDetail(null);
-      await loadEvents();
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    }
-  };
+  const filteredEvents = useMemo(() => {
+    return events.filter((evt) => {
+      const matchSearch = !search || evt.eventName?.toLowerCase().includes(search.toLowerCase()) || evt.location?.toLowerCase().includes(search.toLowerCase());
+      const status = evt.status || (new Date(evt.date) < new Date() ? "completed" : "upcoming");
+      const matchType = !filterType || status === filterType;
+      return matchSearch && matchType;
+    });
+  }, [events, search, filterType]);
 
   const summary = {
     total: events.length,
-    upcoming: events.filter((e) => new Date(e.date) >= new Date()).length,
-    completed: events.filter((e) => new Date(e.date) < new Date()).length,
+    upcoming: events.filter(e => (e.status || (new Date(e.date) >= new Date() ? "upcoming" : "")) === "upcoming").length,
+    completed: events.filter(e => (e.status || (new Date(e.date) < new Date() ? "completed" : "")) === "completed").length,
   };
 
-  const detail = eventDetail || selectedEvent;
+  if (loading) return <div className="text-center py-20 muted">Loading dashboard data...</div>;
 
   return (
     <div className="space-y-6">
-      <section className="hero-panel">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+      <section className="hero-panel" style={{
+        background: "linear-gradient(135deg, #6d5efc 0%, #4f46e5 100%)",
+        color: "#fff",
+        border: "none",
+        position: "relative",
+        overflow: "hidden"
+      }}>
+        {/* Subtle decorative glow */}
+        <div style={{
+          position: "absolute",
+          top: "-20%",
+          right: "-10%",
+          width: "400px",
+          height: "400px",
+          background: "radial-gradient(circle, rgba(255,255,255,0.1), transparent 70%)",
+          pointerEvents: "none"
+        }} />
+
+        <div className="flex flex-wrap items-start justify-between gap-6 relative z-10">
           <div>
-            <div className="section-kicker mb-3">Organizer dashboard</div>
-            <h1 className="section-title !text-[clamp(2.4rem,5vw,4.8rem)] mb-4">Welcome, {user?.username || "Organizer"}</h1>
-            <p className="section-subtitle text-lg max-w-3xl leading-8">
-              Manage your events in one shared board. Open one event at a time for details, editing, and quality signals in a cleaner workspace.
+            <div className="section-kicker !text-white/60 mb-3">Organizer dashboard</div>
+            <h1 className="section-title !text-white !text-[clamp(2.4rem,5vw,4.2rem)] mb-4">
+              Welcome, {user?.username || "Organizer"}
+            </h1>
+            <p className="text-white/80 text-lg leading-8 max-w-2xl font-medium">
+              Manage your event listings, track sponsorship inquiries, and monitor quality signals to attract high-value brand deals.
             </p>
           </div>
-          <button className="btn-primary" onClick={() => setModalMode("create")}>+ Create event</button>
+          <button 
+            className="px-6 py-3 bg-white text-indigo-600 rounded-full font-black text-sm uppercase tracking-wider shadow-[0_10px_20px_rgba(0,0,0,0.1)] hover:scale-105 transition-transform active:scale-95" 
+            onClick={() => setModalMode("create")}
+          >
+            + Create magic event
+          </button>
         </div>
-        <div className="grid md:grid-cols-3 gap-4 mt-8">
-          <StatCard label="Total events" value={summary.total} />
-          <StatCard label="Upcoming events" value={summary.upcoming} />
-          <StatCard label="Completed events" value={summary.completed} />
+
+        <div className="grid sm:grid-cols-3 gap-6 mt-10 relative z-10">
+          <StatCard label="Total listings" value={summary.total} icon="📅" />
+          <StatCard label="Active events" value={summary.upcoming} icon="⚡" />
+          <StatCard label="Completed deals" value={summary.completed} icon="🏆" />
         </div>
       </section>
 
-      <section className="workspace-panel">
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-          <div>
-            <div className="section-kicker mb-2">Events board</div>
-            <h2 className="text-3xl font-black">Your events</h2>
+      {/* Events section */}
+      <section className="space-y-6">
+        <div className="surface-card">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div className="section-kicker mb-2">Management board</div>
+              <h2 className="section-title">Your events</h2>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search your events..."
+                  className="input-field !pl-10 min-w-[320px]"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 muted">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+                </span>
+              </div>
+              <button className="btn-secondary" onClick={loadData}>Refresh board</button>
+            </div>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
+
+          <div className="flex flex-wrap gap-3 mt-6">
             <div className="tab-row">
               {[["", "All"], ["upcoming", "Upcoming"], ["completed", "Completed"]].map(([id, label]) => (
                 <button key={id} className={cx("tab-pill", filterType === id && "active")} onClick={() => setFilterType(id)}>{label}</button>
               ))}
             </div>
-            <input value={search} onChange={(e) => setSearch(e.target.value)} className="input-field min-w-[260px]" placeholder="Search events" />
           </div>
         </div>
 
-        {loading ? <div className="soft-card text-center py-16 muted">Loading events...</div> : filteredEvents.length === 0 ? (
-          <div className="soft-card text-center py-16 muted">No events found.</div>
-        ) : (
-          <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-4">
-            {filteredEvents.map((event) => (
-              <EventTile key={event._id} event={event} active={selectedEvent?._id === event._id} onClick={() => openEvent(event)} />
-            ))}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-fade-up">
+          {filteredEvents.map((evt) => (
+            <EventCard
+              key={evt._id}
+              event={evt}
+              onClick={() => navigate(`/organizer/event/${evt._id}`)}
+            />
+          ))}
+        </div>
+
+        {!filteredEvents.length && search && (
+          <div className="surface-card text-center py-20">
+            <div className="text-4xl mb-4">🔍</div>
+            <h3 className="text-xl font-black mb-2">No events found matching "{search}"</h3>
+            <p className="muted">Try adjusting your filters or search terms.</p>
           </div>
         )}
       </section>
 
-      {detail ? (
-        <section className="workspace-panel">
-          <div className="grid xl:grid-cols-[1.05fr_.95fr] gap-5">
-            <div className="surface-card">
-              <div className="flex items-start justify-between gap-4 mb-5">
-                <div>
-                  <div className="flex flex-wrap items-center gap-3 mb-3">
-                    <h3 className="text-5xl font-black leading-none">{detail.eventName}</h3>
-                    <span className={STATUS_CLASS[detail.status || (new Date(detail.date) < new Date() ? "completed" : "upcoming")] || STATUS_CLASS.upcoming}>
-                      {detail.status || (new Date(detail.date) < new Date() ? "completed" : "upcoming")}
-                    </span>
-                  </div>
-                  <p className="section-subtitle text-lg leading-8">{detail.eventDescription}</p>
-                </div>
-                <img src={detail.thumbnail || "https://placehold.co/220x160?text=Event"} alt={detail.eventName} className="w-44 h-32 rounded-3xl object-cover" />
-              </div>
-              <div className="flex flex-wrap gap-2 mb-5">
-                <span className="info-chip">{detail.eventCategory?.name || "Event"}</span>
-                <span className="info-chip">{detail.location}</span>
-                <span className="info-chip">{new Date(detail.date).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })}</span>
-                <span className="info-chip">{detail.isIndoor ? "Indoor" : "Outdoor"}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <Metric label="Ask" value={`₹${fmtINR(detail.ask)}`} />
-                <Metric label="Ticket price" value={`₹${fmtINR(detail.ticketPrice)}`} />
-                <Metric label="Capacity" value={detail.capacity} />
-                <Metric label="Marketing budget" value={`₹${fmtINR(detail.marketingBudget)}`} />
-              </div>
-              {Array.isArray(detail.socialMediaAccount) && detail.socialMediaAccount.length ? (
-                <div className="soft-card mt-5">
-                  <div className="field-label">Social media reach</div>
-                  <div className="grid gap-3 mt-3">
-                    {detail.socialMediaAccount.map((account, index) => (
-                      <div key={index} className="flex items-center justify-between gap-3">
-                        <div className="font-semibold capitalize">{account.platform}</div>
-                        <div className="muted">{fmtINR(account.followers || 0)} followers</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-
-            <div className="surface-card">
-              <div className="field-label">Event quality</div>
-              <div className="grid grid-cols-2 gap-4 mt-5">
-                <Metric label="Organizer reputation" value={detail.avgOrganizerReputation?.toFixed?.(2) || "0.00"} />
-                <Metric label="Lineup quality" value={detail.avgLineupQuality?.toFixed?.(2) || "0.00"} />
-                <Metric label="Activation maturity" value={detail.avgActivationMaturity?.toFixed?.(2) || "0.00"} />
-                <Metric label="Feedback count" value={detail.totalFeedbacks || 0} />
-              </div>
-              <div className="flex flex-wrap gap-3 mt-8">
-                <button className="btn-secondary" onClick={() => setModalMode("edit")}>Edit event</button>
-                <button className="btn-danger" onClick={handleDelete}>Delete event</button>
-              </div>
-              
-              <div className="mt-8 pt-8 border-t border-white/10">
-                <div className="field-label">Sponsor Chats</div>
-                {eventConversations.length === 0 ? (
-                  <p className="muted leading-7 mt-3">No sponsors have reached out for this event yet.</p>
-                ) : (
-                  <div className="space-y-3 mt-4">
-                    {eventConversations.map(conv => (
-                      <div key={conv._id} className="soft-card flex items-center justify-between p-4 relative overflow-visible">
-                        <div>
-                          <div className="font-bold flex items-center gap-2">
-                            {conv.sponsorId?.username || "Unknown Sponsor"}
-                            {unreadCounts[conv._id] > 0 && (
-                              <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full animate-bounce">
-                                {unreadCounts[conv._id]}
-                              </span>
-                            )}
-                          </div>
-                          <div className="text-sm muted">{conv.lastMessage || "No messages yet"}</div>
-                        </div>
-                        <button 
-                          className="btn-secondary" 
-                          onClick={() => {
-                            setActiveChatSponsor(conv.sponsorId?._id);
-                            setUnreadCounts(prev => ({ ...prev, [conv._id]: 0 }));
-                          }}
-                        >
-                          Chat
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            {activeChatSponsor && (
-              <ChatBox
-                eventId={detail._id}
-                sponsorId={activeChatSponsor}
-                organizerId={user?._id}
-                currentUserRole="organizer"
-                onClose={() => setActiveChatSponsor(null)}
-              />
-            )}
-          </div>
-        </section>
-      ) : null}
-
-      {modalMode ? (
+      {modalMode === "create" && (
         <EventForm
-          event={modalMode === "edit" ? detail : null}
           categories={categories}
           cities={cities}
-          onSubmit={submitForm}
           onClose={() => setModalMode(null)}
+          onSubmit={submitForm}
           submitting={submitting}
         />
-      ) : null}
+      )}
     </div>
   );
 }

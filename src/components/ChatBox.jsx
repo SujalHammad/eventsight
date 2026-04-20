@@ -30,7 +30,7 @@ export default function ChatBox({ eventId, sponsorId, organizerId, currentUserRo
       if (!eventId || !sponsorId || !organizerId) return;
       setLoading(true);
       try {
-        const res = await backend.post(`/chat/conversation`, {
+        const res = await backend.post(`chat/conversation`, {
           eventId,
           sponsorId,
           organizerId,
@@ -39,7 +39,7 @@ export default function ChatBox({ eventId, sponsorId, organizerId, currentUserRo
         const convoId = res.data._id;
         setConversationId(convoId);
 
-        const msgRes = await backend.get(`/chat/messages/${convoId}`);
+        const msgRes = await backend.get(`chat/messages/${convoId}`);
         setMessages(msgRes.data);
 
         if (socket && convoId) {

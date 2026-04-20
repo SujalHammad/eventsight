@@ -10,13 +10,13 @@ organizerRoute.post(
     "/events",
     verifyJwt,
     authorizeRole("organizer"),
-    upload.single("thumbnail"),
+    upload.any(),
     eventCreate
 ) 
 
 organizerRoute.get("/events",verifyJwt,authorizeRole("organizer"),getOrganizerEvents); 
 organizerRoute.get("/events/:eventId",verifyJwt,authorizeRole("organizer"),getOrganizerEventsById);
-organizerRoute.patch("/events/:eventId",verifyJwt,authorizeRole("organizer"),updateEvent)
+organizerRoute.patch("/events/:eventId",verifyJwt,authorizeRole("organizer"),upload.any(),updateEvent)
 organizerRoute.delete("/events/:eventId",verifyJwt,authorizeRole("organizer"),deleteEvent)  //softDelete
 
 
