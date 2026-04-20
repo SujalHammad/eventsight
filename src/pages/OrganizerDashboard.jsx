@@ -18,8 +18,8 @@ function StatCard({ label, value, hint, icon }) {
     <div style={{
       position: "relative",
       overflow: "hidden",
-      borderRadius: "24px",
-      padding: "24px",
+      borderRadius: "10px",
+      padding: "10px",
       background: "rgba(255, 255, 255, 0.08)",
       backdropFilter: "blur(12px)",
       border: "1px solid rgba(255, 255, 255, 0.12)",
@@ -30,14 +30,14 @@ function StatCard({ label, value, hint, icon }) {
         <div className="flex items-center justify-center gap-2 mb-3">
           <span style={{ fontSize: "1.2rem" }}>{icon}</span>
           <div style={{
-            fontSize: "10px",
+            fontSize: "13px",
             fontWeight: 800,
             textTransform: "uppercase",
             letterSpacing: "0.15em",
-            opacity: 0.6
+            opacity: 0.9
           }}>{label}</div>
         </div>
-        <div className="text-4xl font-black">{value}</div>
+        <div className="text-2xl font-black">{value}</div>
         {hint ? <div style={{ opacity: 0.5, fontSize: "0.85rem", marginTop: "8px" }}>{hint}</div> : null}
       </div>
       <div style={{
@@ -340,7 +340,7 @@ export default function OrganizerDashboard({ user }) {
         <div className="flex flex-wrap items-start justify-between gap-6 relative z-10">
           <div>
             <div className="section-kicker !text-white/60 mb-3">Organizer dashboard</div>
-            <h1 className="section-title !text-white !text-[clamp(2.4rem,5vw,4.2rem)] mb-4">
+            <h1 className="section-title !text-white !text-[clamp(2.4rem,5vw,2.4rem)] mb-2">
               Welcome, {user?.username || "Organizer"}
             </h1>
             <p className="text-white/80 text-lg leading-8 max-w-2xl font-medium">
@@ -351,11 +351,11 @@ export default function OrganizerDashboard({ user }) {
             className="px-6 py-3 bg-white text-indigo-600 rounded-full font-black text-sm uppercase tracking-wider shadow-[0_10px_20px_rgba(0,0,0,0.1)] hover:scale-105 transition-transform active:scale-95" 
             onClick={() => setModalMode("create")}
           >
-            + Create magic event
+            + Create event
           </button>
         </div>
 
-        <div className="grid sm:grid-cols-3 gap-6 mt-10 relative z-10">
+        <div className="grid sm:grid-cols-3 gap-20 mt-10 relative z-10">
           <StatCard label="Total listings" value={summary.total} icon="📅" />
           <StatCard label="Active events" value={summary.upcoming} icon="⚡" />
           <StatCard label="Completed deals" value={summary.completed} icon="🏆" />

@@ -27,8 +27,8 @@ function StatCard({ label, value, hint, icon }) {
     <div style={{
       position: "relative",
       overflow: "hidden",
-      borderRadius: "24px",
-      padding: "24px",
+      borderRadius: "6px",
+      padding: "4px",
       background: "rgba(255, 255, 255, 0.08)",
       backdropFilter: "blur(12px)",
       border: "1px solid rgba(255, 255, 255, 0.12)",
@@ -36,18 +36,18 @@ function StatCard({ label, value, hint, icon }) {
       textAlign: "center"
     }}>
       <div style={{ position: "relative", zIndex: 1 }}>
-        <div className="flex items-center justify-center gap-2 mb-3">
+        <div className="flex items-center justify-center gap-1 mb-3">
           <span style={{ fontSize: "1.2rem" }}>{icon}</span>
           <div style={{
-            fontSize: "10px",
+            fontSize: "11px",
             fontWeight: 800,
             textTransform: "uppercase",
             letterSpacing: "0.15em",
-            opacity: 0.6
+            opacity: 0.9
           }}>{label}</div>
         </div>
-        <div className="text-4xl font-black">{value}</div>
-        {hint ? <div style={{ opacity: 0.5, fontSize: "0.85rem", marginTop: "8px" }}>{hint}</div> : null}
+        <div className="text-2xl font-black">{value}</div>
+        {hint ? <div style={{ opacity: 0.5, fontSize: "0.85rem", marginTop: "-1px" }}>{hint}</div> : null}
       </div>
       <div style={{
         position: "absolute",
@@ -325,22 +325,21 @@ export default function SponsorDashboard({ user }) {
         <div className="flex flex-wrap items-start justify-between gap-6 relative z-10">
           <div>
             <div className="section-kicker !text-white/60 mb-3">Sponsor ecosystem</div>
-            <h1 className="section-title !text-white !text-[clamp(2.4rem,5vw,4.2rem)] mb-4">
+            <h1 className="section-title !text-white !text-[clamp(2.4rem,5vw,2.2rem)] mb-4">
               Welcome, {user?.username || "Sponsor"}
             </h1>
-            <p className="text-white/80 text-lg leading-8 max-w-2xl font-medium">
+            <p className="text-white/80 text-lg leading-8 max-w-2xl font-small">
               Your command center for discovering high-fit events, running AI-backed ROI predictions, and managing sponsorship pipelines.
             </p>
           </div>
         </div>
 
-        <div className="grid sm:grid-cols-3 gap-6 mt-10 relative z-10">
+        <div className="grid sm:grid-cols-3 gap-20 mt-10 relative z-10">
           <StatCard label="Live opportunities" value={stats.available} icon="🎯" />
           <StatCard label="Analyzed deals" value={stats.completed} icon="📊" />
           <StatCard
             label="Profile readiness"
             value={stats.profile === "Ready" ? "100%" : "0%"}
-            hint={profile ? "Verified & complete" : "Action required"}
             icon="💎"
           />
         </div>
