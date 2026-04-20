@@ -1,10 +1,10 @@
-const mongoose=require("mongoose")
+const mongoose = require("mongoose")
 const { asyncHandler } = require("../utility/AsyncHandler");
-const {ApiError}=require("../utility/ApiError.js")
-const {ApiResponse}=require("../utility/ApiResponse.js");
+const { ApiError } = require("../utility/ApiError.js")
+const { ApiResponse } = require("../utility/ApiResponse.js");
 const { Organizer } = require("../models/organizer.model.js");
 const { uploadOnCloudinary } = require("../utility/cloudinary.js");
-const {EventCategory}=require("../models/eventCategory.model.js");
+const { EventCategory } = require("../models/eventCategory.model.js");
 
 
 const DEFAULT_FEEDBACK_RATINGS = Object.freeze({
@@ -65,7 +65,7 @@ const parseSocialMedia = (raw) => {
     } catch { return []; }
 };
 
-const eventCreate=asyncHandler(async(req,res)=>{
+const eventCreate = asyncHandler(async (req, res) => {
     const {
         eventName,
         eventCategory,
@@ -78,61 +78,65 @@ const eventCreate=asyncHandler(async(req,res)=>{
         marketingBudget,
         isIndoor,
         socialMediaAccount: rawSocial
-    }=req.body;
+    } = req.body;
 
     const socialMediaAccount = parseSocialMedia(rawSocial);
 
-     if(
-        !eventName ||
+    if (
+        !eventName?.trim() ||
         !eventCategory ||
-        !eventDescription ||
+        !eventDescription?.trim() ||
         !location ||
-        !capacity ||
+        capacity === undefined || capacity === null ||
         !date ||
-        !ask ||
-        !ticketPrice ||
-        !marketingBudget ||
+        ask === undefined || ask === null ||
+        ticketPrice === undefined || ticketPrice === null ||
+        marketingBudget === undefined || marketingBudget === null ||
         isIndoor === undefined
-    ){
-        throw new ApiError(400,"All fields are required")
+    ) {
+        throw new ApiError(400, "All fields are required")
     }
 
-    const existingEventCategory=await EventCategory.findById(eventCategory);
+    const existingEventCategory = await EventCategory.findById(eventCategory);
 
-    if(!existingEventCategory){
-        throw new ApiError(404,"Event Category not Found");
+    if (!existingEventCategory) {
+        throw new ApiError(404, "Event Category not Found");
     }
 
-    let thumbnailLocalFilePath;
-    if(req.file){
-        thumbnailLocalFilePath=req.file.path;
-    }
-    
+    const thumbnailFile = req.file || (req.files && req.files.find(f => f.fieldname === "thumbnail")) || (req.files && req.files[0]);
+    const thumbnailLocalFilePath = thumbnailFile?.path;
+
     let uploadThumbnail;
-    if(thumbnailLocalFilePath){
-        uploadThumbnail=await uploadOnCloudinary(thumbnailLocalFilePath);
+    if (thumbnailLocalFilePath) {
+        uploadThumbnail = await uploadOnCloudinary(thumbnailLocalFilePath);
 
-        if(!uploadThumbnail){
-            throw new ApiError(500,"Error while uploading on cloudinary")
+        if (!uploadThumbnail) {
+            throw new ApiError(500, "Error while uploading on cloudinary")
         }
     }
-    
 
-    const event=await Organizer.create({
-        organizer:req.user._id,
-        eventName,
-        eventCategory,
-        eventDescription,
-        location,
-        capacity,
-        date,
-        ask,
-        ticketPrice,
-        marketingBudget,
-        isIndoor,
-        socialMediaAccount,
-        thumbnail: uploadThumbnail?.url || null
-    })
+
+    let event;
+    try {
+        event = await Organizer.create({
+            organizer: req.user._id,
+            eventName,
+            eventCategory,
+            eventDescription,
+            location,
+            capacity,
+            date,
+            ask,
+            ticketPrice,
+            marketingBudget,
+            isIndoor,
+            socialMediaAccount,
+            thumbnail: uploadThumbnail?.secure_url || uploadThumbnail?.url || null
+        })
+    } catch (createError) {
+        console.error("EVENT CREATE DB ERROR:", createError);
+        throw createError;
+    }
 
     return res.status(201).json(
         new ApiResponse(201,
@@ -144,41 +148,41 @@ const eventCreate=asyncHandler(async(req,res)=>{
 })
 
 
-const getOrganizerEvents = asyncHandler(async (req,res)=>{
+const getOrganizerEvents = asyncHandler(async (req, res) => {
 
     const page = parseInt(req.query.page) || 1
-    const limit = Math.min(parseInt(req.query.limit) || 10,50)
+    const limit = Math.min(parseInt(req.query.limit) || 10, 50)
 
-    const skip = (page-1)*limit
+    const skip = (page - 1) * limit
 
     const filter = {
-        organizer:req.user._id,
-        isDeleted:false
+        organizer: req.user._id,
+        isDeleted: false
     }
 
-    if(req.query.type==="active" || req.query.type==="upcoming"){
+    if (req.query.type === "active" || req.query.type === "upcoming") {
         filter.date = { $gte: new Date() };
     }
 
-    if(req.query.type==="expired" || req.query.type==="completed"){
+    if (req.query.type === "expired" || req.query.type === "completed") {
         filter.date = { $lt: new Date() };
     }
 
-    if(req.query.search){
+    if (req.query.search) {
         filter.eventName = {
-            $regex:req.query.search,
-            $options:"i"
+            $regex: req.query.search,
+            $options: "i"
         }
     }
 
-    if(req.query.category){
+    if (req.query.category) {
         filter.eventCategory = req.query.category
     }
 
-    if(req.query.location){
+    if (req.query.location) {
         filter.location = {
-            $regex:req.query.location,
-            $options:"i"
+            $regex: req.query.location,
+            $options: "i"
         }
     }
 
@@ -187,34 +191,34 @@ const getOrganizerEvents = asyncHandler(async (req,res)=>{
         { $match: filter },
 
         {
-            $lookup:{
-                from:"eventcategories",
-                localField:"eventCategory",
-                foreignField:"_id",
-                as:"eventCategory"
+            $lookup: {
+                from: "eventcategories",
+                localField: "eventCategory",
+                foreignField: "_id",
+                as: "eventCategory"
             }
         },
 
         {
-            $unwind:{
-                path:"$eventCategory",
-                preserveNullAndEmptyArrays:true
+            $unwind: {
+                path: "$eventCategory",
+                preserveNullAndEmptyArrays: true
             }
         },
 
-       
+
 
         {
-            $lookup:{
-                from:"eventfeedbacks",
-                localField:"_id",
-                foreignField:"event",
-                as:"feedbacks"
+            $lookup: {
+                from: "eventfeedbacks",
+                localField: "_id",
+                foreignField: "event",
+                as: "feedbacks"
             }
         },
 
         {
-            $addFields:{
+            $addFields: {
                 ...buildFeedbackAggregateFields(),
                 status: {
                     $cond: { if: { $lt: ["$date", new Date()] }, then: "completed", else: "upcoming" }
@@ -222,25 +226,25 @@ const getOrganizerEvents = asyncHandler(async (req,res)=>{
             }
         },
         {
-            $project:{
-                feedbacks:0
+            $project: {
+                feedbacks: 0
             }
         },
 
-        { $sort:{createdAt:-1} },
+        { $sort: { createdAt: -1 } },
 
         {
-            $facet:{
-                events:[
-                    { $skip:skip },
-                    { $limit:limit }
+            $facet: {
+                events: [
+                    { $skip: skip },
+                    { $limit: limit }
                 ],
-                totalCount:[
-                    { $count:"count" }
+                totalCount: [
+                    { $count: "count" }
                 ],
-                pastEventsCount:[
-                    { $match:{ date: { $lt: new Date() } } },
-                    { $count:"count" }
+                pastEventsCount: [
+                    { $match: { date: { $lt: new Date() } } },
+                    { $count: "count" }
                 ]
             }
         }
@@ -249,7 +253,7 @@ const getOrganizerEvents = asyncHandler(async (req,res)=>{
 
     const events = result[0]?.events || [];
     const total = result[0]?.totalCount[0]?.count || 0;
-    const pastEventsOrganized = result[0]?.pastEventsCount[0]?.count || 0 
+    const pastEventsOrganized = result[0]?.pastEventsCount[0]?.count || 0
 
     return res.status(200).json(
 
@@ -258,11 +262,11 @@ const getOrganizerEvents = asyncHandler(async (req,res)=>{
             {
                 events,
                 pastEventsOrganized: pastEventsOrganized,
-                pagination:{
+                pagination: {
                     total,
                     page,
                     limit,
-                    totalPages:Math.ceil(total/limit)
+                    totalPages: Math.ceil(total / limit)
                 }
             },
             "Events fetched successfully"
@@ -271,51 +275,51 @@ const getOrganizerEvents = asyncHandler(async (req,res)=>{
 
 })
 
-const getOrganizerEventsById = asyncHandler(async(req,res)=>{
+const getOrganizerEventsById = asyncHandler(async (req, res) => {
 
-    if(!mongoose.Types.ObjectId.isValid(req.params.eventId)){
-        throw new ApiError(400,"Invalid event id")
+    if (!mongoose.Types.ObjectId.isValid(req.params.eventId)) {
+        throw new ApiError(400, "Invalid event id")
     }
 
     const event = await Organizer.aggregate([
 
         {
-            $match:{
-                _id:new mongoose.Types.ObjectId(req.params.eventId),
-                organizer:req.user._id,
-                isDeleted:false
+            $match: {
+                _id: new mongoose.Types.ObjectId(req.params.eventId),
+                organizer: req.user._id,
+                isDeleted: false
             }
         },
 
         {
-            $lookup:{
-                from:"eventcategories",
-                localField:"eventCategory",
-                foreignField:"_id",
-                as:"eventCategory"
+            $lookup: {
+                from: "eventcategories",
+                localField: "eventCategory",
+                foreignField: "_id",
+                as: "eventCategory"
             }
         },
 
         {
-            $unwind:{
-                path:"$eventCategory",
-                preserveNullAndEmptyArrays:true
+            $unwind: {
+                path: "$eventCategory",
+                preserveNullAndEmptyArrays: true
             }
         },
 
-       
+
 
         {
-            $lookup:{
-                from:"eventfeedbacks",
-                localField:"_id",
-                foreignField:"event",
-                as:"feedbacks"
+            $lookup: {
+                from: "eventfeedbacks",
+                localField: "_id",
+                foreignField: "event",
+                as: "feedbacks"
             }
         },
 
         {
-            $addFields:{
+            $addFields: {
                 ...buildFeedbackAggregateFields(),
                 status: {
                     $cond: { if: { $lt: ["$date", new Date()] }, then: "completed", else: "upcoming" }
@@ -325,8 +329,8 @@ const getOrganizerEventsById = asyncHandler(async(req,res)=>{
 
     ])
 
-    if(!event.length){
-        throw new ApiError(404,"Event not found")
+    if (!event.length) {
+        throw new ApiError(404, "Event not found")
     }
 
     return res.status(200).json(
@@ -338,16 +342,16 @@ const getOrganizerEventsById = asyncHandler(async(req,res)=>{
     )
 })
 
-const updateEvent = asyncHandler(async(req,res)=>{
+const updateEvent = asyncHandler(async (req, res) => {
 
-    if(!mongoose.Types.ObjectId.isValid(req.params.eventId)){
-        throw new ApiError(400,"Invalid event id")
+    if (!mongoose.Types.ObjectId.isValid(req.params.eventId)) {
+        throw new ApiError(400, "Invalid event id")
     }
 
     const data = req.body
 
-    if(!data || Object.keys(data).length === 0){
-        throw new ApiError(400,"No data provided for update")
+    if ((!data || Object.keys(data).length === 0) && !req.file && (!req.files || req.files.length === 0)) {
+        throw new ApiError(400, "No data provided for update")
     }
 
     const allowedFields = [
@@ -366,9 +370,9 @@ const updateEvent = asyncHandler(async(req,res)=>{
 
     const updateData = {}
 
-    for(const key of allowedFields){
-        if(data[key] !== undefined){
-            if(key === 'socialMediaAccount'){
+    for (const key of allowedFields) {
+        if (data[key] !== undefined) {
+            if (key === 'socialMediaAccount') {
                 updateData[key] = parseSocialMedia(data[key])
             } else {
                 updateData[key] = data[key]
@@ -376,79 +380,80 @@ const updateEvent = asyncHandler(async(req,res)=>{
         }
     }
 
-    if(Object.keys(updateData).length === 0){
-        throw new ApiError(400,"No valid fields to update")
+    if (Object.keys(updateData).length === 0 && !req.file && (!req.files || req.files.length === 0)) {
+        throw new ApiError(400, "No valid fields to update")
     }
 
- 
 
-    if(updateData.eventName){
+
+    if (updateData.eventName) {
         updateData.eventName = updateData.eventName.trim()
     }
 
-    if(updateData.eventDescription){
+    if (updateData.eventDescription) {
         updateData.eventDescription = updateData.eventDescription.trim()
     }
 
-    if(updateData.location){
+    if (updateData.location) {
         updateData.location = updateData.location.trim()
     }
 
-    
 
-    if(updateData.eventCategory){
 
-        if(!mongoose.Types.ObjectId.isValid(updateData.eventCategory)){
-            throw new ApiError(400,"Invalid event category id")
+    if (updateData.eventCategory) {
+
+        if (!mongoose.Types.ObjectId.isValid(updateData.eventCategory)) {
+            throw new ApiError(400, "Invalid event category id")
         }
 
         const category = await EventCategory.findById(updateData.eventCategory)
 
-        if(!category){
-            throw new ApiError(404,"Event category not found")
+        if (!category) {
+            throw new ApiError(404, "Event category not found")
         }
     }
 
-   
 
-    if(updateData.date){
+
+    if (updateData.date) {
         const newDate = new Date(updateData.date)
 
-        if(newDate <= new Date()){
-            throw new ApiError(400,"Event date must be in future")
+        if (newDate <= new Date()) {
+            throw new ApiError(400, "Event date must be in future")
         }
     }
 
-    
 
-    if(req.file){
-        const upload = await uploadOnCloudinary(req.file.path)
 
-        if(!upload){
-            throw new ApiError(500,"Thumbnail upload failed")
+    const fileToUpload = req.file || (req.files && req.files.find(f => f.fieldname === "thumbnail")) || (req.files && req.files[0]);
+    if (fileToUpload) {
+        const upload = await uploadOnCloudinary(fileToUpload.path)
+
+        if (!upload) {
+            throw new ApiError(500, "Thumbnail upload failed")
         }
 
-        updateData.thumbnail = upload.url
+        updateData.thumbnail = upload.secure_url || upload.url
     }
 
     const event = await Organizer.findOneAndUpdate(
 
         {
-            _id:req.params.eventId,
-            organizer:req.user._id,
-            isDeleted:false
+            _id: req.params.eventId,
+            organizer: req.user._id,
+            isDeleted: false
         },
 
-        { $set:updateData },
+        { $set: updateData },
 
         {
-            new:true,
-            runValidators:true
+            new: true,
+            runValidators: true
         }
     )
 
-    if(!event){
-        throw new ApiError(404,"Event not found")
+    if (!event) {
+        throw new ApiError(404, "Event not found")
     }
 
     return res.status(200).json(
@@ -462,28 +467,28 @@ const updateEvent = asyncHandler(async(req,res)=>{
 })
 
 //updateThumbnail option should be
-const deleteEvent = asyncHandler(async(req,res)=>{
+const deleteEvent = asyncHandler(async (req, res) => {
 
-    if(!mongoose.Types.ObjectId.isValid(req.params.eventId)){
-        throw new ApiError(400,"Invalid event id")
+    if (!mongoose.Types.ObjectId.isValid(req.params.eventId)) {
+        throw new ApiError(400, "Invalid event id")
     }
 
     const event = await Organizer.findOneAndUpdate(
 
         {
-            _id:req.params.eventId,
-            organizer:req.user._id,
-            isDeleted:false
+            _id: req.params.eventId,
+            organizer: req.user._id,
+            isDeleted: false
         },
 
-        {isDeleted:true},
+        { isDeleted: true },
 
-        {new:true}
+        { new: true }
 
     )
 
-    if(!event){
-        throw new ApiError(404,"Event not found")
+    if (!event) {
+        throw new ApiError(404, "Event not found")
     }
 
     return res.status(200).json(
@@ -498,5 +503,5 @@ const deleteEvent = asyncHandler(async(req,res)=>{
 
 
 
-module.exports={eventCreate,getOrganizerEvents,getOrganizerEventsById,updateEvent,deleteEvent}
+module.exports = { eventCreate, getOrganizerEvents, getOrganizerEventsById, updateEvent, deleteEvent }
 

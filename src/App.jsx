@@ -9,13 +9,16 @@ import ResetPasswordPage from "./pages/ResetPasswordPage";
 import SettingsPage from "./pages/SettingsPage";
 import AdminPage from "./pages/AdminPage";
 import SponsorWisePage from "./pages/SponsorWisePage";
+import SponsorEventPage from "./pages/SponsorEventPage";
+import SponsorAnalysisPage from "./pages/SponsorAnalysisPage";
+import OrganizerEventPage from "./pages/OrganizerEventPage";
 import { Toaster } from "react-hot-toast";
 
 export default function App() {
   return (
     <>
-      <Toaster 
-        position="bottom-right" 
+      <Toaster
+        position="bottom-right"
         toastOptions={{
           style: {
             background: 'rgba(20, 20, 22, 0.8)',
@@ -28,13 +31,16 @@ export default function App() {
           },
           success: { iconTheme: { primary: '#10B981', secondary: '#fff' } },
           error: { iconTheme: { primary: '#EF4444', secondary: '#fff' } }
-        }} 
+        }}
       />
       <Routes>
         <Route path="/" element={<AuthGate />}>
           <Route index element={<DashboardSwitch />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="sponsor-wise" element={<SponsorWisePage />} />
+          <Route path="sponsor/event/:id" element={<SponsorEventPage />} />
+          <Route path="sponsor/analysis/:id" element={<SponsorAnalysisPage />} />
+          <Route path="organizer/event/:id" element={<OrganizerEventPage />} />
         </Route>
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify-otp" element={<VerifyOtpPage />} />

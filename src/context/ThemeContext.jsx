@@ -3,17 +3,13 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 const ThemeContext = createContext(null);
 
 export function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState(() => {
-    const saved = localStorage.getItem('eventsight-theme');
-    if (saved === 'light' || saved === 'dark') return saved;
-    return 'dark';
-  });
+  const [theme, setTheme] = useState('light');
 
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.remove('light', 'dark');
-    root.classList.add(theme);
-    localStorage.setItem('eventsight-theme', theme);
+    root.classList.remove('dark');
+    root.classList.add('light');
+    localStorage.setItem('eventsight-theme', 'light');
   }, [theme]);
 
   const value = useMemo(() => ({

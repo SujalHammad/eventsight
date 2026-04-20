@@ -64,10 +64,6 @@ export default function TopNav({ user }) {
         </div>
 
         <div className="flex items-center gap-3">
-          <button type="button" onClick={toggleTheme} className="btn-secondary !rounded-full !px-5 !py-3">
-            {theme === "dark" ? "☀ Light mode" : "🌙 Dark mode"}
-          </button>
-
           {user ? (
             <>
               <div className="soft-card !py-2.5 !px-3.5 flex items-center gap-3 min-w-0">

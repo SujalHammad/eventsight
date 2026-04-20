@@ -7,9 +7,9 @@ import { getErrorMessage } from "@/lib/utils";
 import toast from "react-hot-toast";
 
 const FEATURES = [
-  ["Brand-event fit", "AI-assisted matching for sponsors and organizers."],
-  ["Fast sponsorship verdicts", "Run a prediction and get a usable recommendation instantly."],
-  ["Cleaner event pipeline", "Track events, feedback, and ROI signals in one workspace."],
+  { icon: "🎯", title: "Brand-event fit", desc: "AI-assisted matching for sponsors and organizers." },
+  { icon: "⚡", title: "Fast verdicts", desc: "Get a usable recommendation in seconds." },
+  { icon: "📊", title: "Clean pipeline", desc: "Track events, feedback, and ROI in one workspace." },
 ];
 
 export default function AuthGate() {
@@ -22,11 +22,8 @@ export default function AuthGate() {
       try {
         const res = await getCurrentUser();
         const current = res?.data?.user ?? res?.user ?? res?.data;
-        if (current) {
-          setUser(current);
-          setRole(current.role);
-        }
-      } catch {}
+        if (current) { setUser(current); setRole(current.role); }
+      } catch { }
       setLoading(false);
     })();
   }, [setRole, setUser]);
@@ -52,10 +49,10 @@ export default function AuthGate() {
   if (loading) {
     return (
       <AppShell user={null}>
-        <div className="min-h-[70vh] flex items-center justify-center">
-          <div className="surface-card text-center max-w-sm w-full">
-            <div className="w-10 h-10 mx-auto rounded-full border-4 border-[var(--line)] border-t-[var(--accent)] animate-spin mb-4" />
-            <div className="font-bold">Checking session...</div>
+        <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div className="surface-card text-center" style={{ maxWidth: "300px", width: "100%" }}>
+            <div className="w-9 h-9 mx-auto rounded-full border-4 border-[var(--line)] border-t-[var(--accent)] animate-spin mb-3" />
+            <p className="font-semibold text-sm">Checking session…</p>
           </div>
         </div>
       </AppShell>
@@ -72,69 +69,131 @@ export default function AuthGate() {
 
   return (
     <AppShell user={null}>
-      <div className="grid lg:grid-cols-[1.15fr_.85fr] gap-6 items-stretch min-h-[calc(100vh-140px)]">
-        <section className="hero-panel flex flex-col justify-between">
-          <div>
-            <div className="section-kicker mb-6">Smarter sponsorship platform</div>
-            <h1 className="section-title !text-[clamp(2.6rem,6vw,5rem)] max-w-3xl mb-6">
-              A cleaner event sponsorship experience your users will actually enjoy.
-            </h1>
-            <p className="section-subtitle text-lg max-w-2xl leading-8 mb-10">
-              EventSight helps sponsors discover promising events, organizers present stronger opportunities, and both sides make better decisions with AI-backed prediction and feedback loops.
-            </p>
+      {/* Full-height centering wrapper */}
+      <div style={{ minHeight: "calc(100vh - 110px)", display: "flex", alignItems: "center", justifyContent: "center" }}>
 
-            <div className="grid md:grid-cols-3 gap-4">
-              {FEATURES.map(([title, desc]) => (
-                <div key={title} className="soft-card">
-                  <div className="font-extrabold text-lg mb-2">{title}</div>
-                  <div className="muted text-sm leading-6">{desc}</div>
+        {/* Constrained centered grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "80px", width: "100%", maxWidth: "1100px", height: "640px" }}>
+
+          {/* ─── LEFT: Hero / Marketing ─── */}
+          <div style={{
+            background: "linear-gradient(140deg, #6d5efc 0%, #4338ca 55%, #1e1b4b 100%)",
+            borderRadius: "20px",
+            padding: "40px 36px",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            color: "#fff",
+            overflow: "hidden",
+          }}>
+            {/* Top content */}
+            <div>
+              <p style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", opacity: 0.6, marginBottom: "12px" }}>
+                SponsorWise · AI Sponsorship Platform
+              </p>
+              <h1 style={{ fontSize: "1.9rem", fontWeight: 800, lineHeight: 1.3, marginBottom: "16px", color: "#fff" }}>
+                A cleaner event sponsorship experience.
+              </h1>
+              <p style={{ fontSize: "0.95rem", lineHeight: 1.65, opacity: 0.75, marginBottom: "32px", maxWidth: "360px" }}>
+                Connect sponsors with high-fit events using AI-backed predictions and real-time feedback loops.
+              </p>
+
+              {/* Feature boxes */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", marginTop: "32px" }}>
+                {FEATURES.map(({ icon, title, desc }) => (
+                  <div key={title} style={{
+                    background: "rgba(255,255,255,0.1)",
+                    borderRadius: "12px",
+                    padding: "16px 12px",
+                    backdropFilter: "blur(6px)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                  }}>
+                    <div style={{ fontSize: "1.2rem", marginBottom: "8px" }}>{icon}</div>
+                    <div style={{ fontWeight: 700, fontSize: "0.8rem", marginBottom: "6px" }}>{title}</div>
+                    <div style={{ fontSize: "0.72rem", opacity: 0.7, lineHeight: 1.5 }}>{desc}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Bottom stats */}
+            <div style={{ display: "flex", gap: "24px", paddingTop: "16px", borderTop: "1px solid rgba(255,255,255,0.15)" }}>
+              {[["500+", "Events"], ["AI", "Predictions"], ["Fast", "Onboarding"]].map(([val, label]) => (
+                <div key={val}>
+                  <div style={{ fontSize: "1.1rem", fontWeight: 800 }}>{val}</div>
+                  <div style={{ fontSize: "0.63rem", opacity: 0.6, marginTop: "2px" }}>{label}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-4 mt-8">
-            <div>
-              <div className="text-3xl font-black">500+</div>
-              <div className="faint text-sm">Events evaluated</div>
-            </div>
-            <div>
-              <div className="text-3xl font-black">ROI</div>
-              <div className="faint text-sm">Prediction-backed decisions</div>
-            </div>
-            <div>
-              <div className="text-3xl font-black">Fast</div>
-              <div className="faint text-sm">Simple onboarding flow</div>
-            </div>
-          </div>
-        </section>
+          {/* ─── RIGHT: Login Card ─── */}
+          <div style={{
+            background: "var(--surface)",
+            borderRadius: "20px",
+            boxShadow: "0 4px 24px rgba(15,23,42,0.08)",
+            padding: "40px 38px",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+          }}>
+            <p style={{ fontSize: "12px", fontWeight: 700, letterSpacing: "0.18em", textTransform: "uppercase", color: "var(--accent)", marginBottom: "12px" }}>
+              Welcome back
+            </p>
+            <h2 style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--text)", lineHeight: 1.25, marginBottom: "8px" }}>
+              Sign in to SponsorWise
+            </h2>
+            <p style={{ fontSize: "0.9rem", color: "var(--text-soft)", lineHeight: 1.6, marginBottom: "32px" }}>
+              Access your sponsor or organizer dashboard.
+            </p>
 
-        <section className="hero-panel flex items-center justify-center">
-          <div className="w-full max-w-md">
-            <div className="section-kicker mb-3">Welcome back</div>
-            <h2 className="section-title mb-2">Sign in to EventSight</h2>
-            <p className="section-subtitle mb-8">Use your account to access sponsor or organizer dashboards.</p>
-
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
               <div>
-                <label className="field-label">Username</label>
-                <input name="username" className="input-field" placeholder="your username" autoComplete="username" />
+                <label style={{ display: "block", fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: "5px" }}>
+                  Username
+                </label>
+                <input
+                  name="username"
+                  className="input-field"
+                  style={{ padding: "14px 16px", fontSize: "0.95rem", borderRadius: "12px" }}
+                  placeholder="your username"
+                  autoComplete="username"
+                />
               </div>
               <div>
-                <label className="field-label">Password</label>
-                <input name="password" type="password" className="input-field" placeholder="••••••••" autoComplete="current-password" />
+                <label style={{ display: "block", fontSize: "10px", fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--text-faint)", marginBottom: "5px" }}>
+                  Password
+                </label>
+                <input
+                  name="password"
+                  type="password"
+                  className="input-field"
+                  style={{ padding: "14px 16px", fontSize: "0.95rem", borderRadius: "12px" }}
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                />
               </div>
-              <button type="submit" disabled={submitting} className="btn-primary w-full">
-                {submitting ? "Signing in..." : "Sign in"}
+              <button
+                type="submit"
+                disabled={submitting}
+                className="btn-primary"
+                style={{ width: "100%", padding: "13px", fontSize: "0.95rem", fontWeight: 700, marginTop: "8px", borderRadius: "12px" }}
+              >
+                {submitting ? "Signing in…" : "Sign in"}
               </button>
             </form>
 
-            <div className="flex items-center justify-between mt-6 text-sm">
-              <Link to="/register" className="font-bold text-[var(--accent)]">Create account →</Link>
-              <Link to="/forgot-password" className="muted">Forgot password?</Link>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "32px", paddingTop: "20px", borderTop: "1px solid var(--line)", fontSize: "0.85rem" }}>
+              <Link to="/register" style={{ fontWeight: 700, color: "var(--accent)", textDecoration: "none" }}>
+                Create account →
+              </Link>
+              <Link to="/forgot-password" style={{ color: "var(--text-soft)", textDecoration: "none" }}>
+                Forgot password?
+              </Link>
             </div>
           </div>
-        </section>
+
+        </div>
       </div>
     </AppShell>
   );

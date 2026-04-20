@@ -5,10 +5,10 @@ import Badge from "@/components/ui/Badge";
 
 function InsightTile({ label, value, description }) {
   return (
-    <div className="surface-subtle p-4">
-      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-white/35">{label}</div>
-      <div className="mt-2 text-base font-bold text-white">{value || "—"}</div>
-      {description ? <div className="mt-1 text-sm leading-relaxed text-white/48">{description}</div> : null}
+    <div className="bg-[var(--bg-soft)] p-5 rounded-2xl border border-[var(--line)]">
+      <div className="text-[10px] font-black uppercase tracking-[0.15em] text-[var(--accent)] mb-2">{label}</div>
+      <div className="text-base font-black text-[var(--text)]">{value || "—"}</div>
+      {description ? <div className="mt-2 text-xs leading-relaxed text-[var(--text-soft)] opacity-80">{description}</div> : null}
     </div>
   );
 }
@@ -26,150 +26,156 @@ export default function BrandPanel({
 }) {
   if (step === 2) {
     return (
-      <Card className="overflow-hidden p-0">
+      <section className="surface-card !p-0 overflow-hidden">
         <div className="grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="border-b border-white/8 p-6 sm:p-8 lg:border-b-0 lg:border-r">
-            <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="p-8 border-b border-[var(--line)] lg:border-b-0 lg:border-r">
+            <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <div className="kicker">Brand profile</div>
-                <h2 className="mt-2 text-3xl font-black tracking-tight text-white">{brandData.company_name || "Your brand"}</h2>
-                <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/52">
-                  This brand snapshot is what the model and AI layers will use to frame sponsorship fit, positioning,
-                  and negotiation language.
+                <div className="section-kicker">Brand profile locked</div>
+                <h2 className="mt-2 text-3xl font-black tracking-tight text-[var(--text)]">@{brandData.company_name || "Brand"}</h2>
+                <p className="mt-3 max-w-xl text-sm leading-relaxed text-[var(--text-soft)]">
+                  This brand snapshot frames the sponsorship fit, AI positioning, and negotiation strategy.
                 </p>
               </div>
-              <button type="button" onClick={() => setStep(1)} className="btn-ghost px-4 py-3 text-xs">
+              <button type="button" onClick={() => setStep(1)} className="btn-secondary !py-2 !px-4 !rounded-xl !text-[10px] tracking-widest uppercase font-black">
                 Edit profile
               </button>
             </div>
 
-            <div className="mt-5 flex flex-wrap gap-2">
-              <Badge className="bg-indigo-500/12 border-indigo-500/20 text-indigo-100">Industry · {brandData.industry}</Badge>
+            <div className="mt-6 flex flex-wrap gap-2">
+              <span className="px-3 py-1.5 rounded-xl bg-indigo-500/10 text-indigo-600 text-[10px] font-black uppercase tracking-wider border border-indigo-500/10">
+                Industry · {brandData.industry}
+              </span>
               {brandResult?.persona ? (
-                <Badge className="bg-emerald-500/12 border-emerald-500/20 text-emerald-100">Persona · {brandResult.persona}</Badge>
+                <span className="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-600 text-[10px] font-black uppercase tracking-wider border border-emerald-500/10">
+                  Persona · {brandResult.persona}
+                </span>
               ) : null}
             </div>
 
-            <div className="mt-6 rounded-[24px] border border-white/10 bg-gradient-to-br from-indigo-500/12 via-transparent to-emerald-500/10 p-5">
-              <div className="kicker">Strategy statement</div>
-              <p className="mt-3 text-lg font-semibold leading-relaxed text-white/90">
-                {brandResult?.strategy_statement ? `“${brandResult.strategy_statement}”` : "No strategy statement returned yet."}
+            <div className="mt-8 p-6 rounded-3xl bg-gradient-to-br from-indigo-500/5 to-transparent border border-indigo-500/10">
+              <div className="section-kicker">Strategy statement</div>
+              <p className="mt-3 text-lg font-bold leading-relaxed text-[var(--text)]">
+                {brandResult?.strategy_statement ? `“${brandResult.strategy_statement}”` : "The model is framing your strategy..."}
               </p>
             </div>
 
-            <div className="mt-5 rounded-[24px] border border-white/8 bg-white/[0.035] p-5">
-              <div className="kicker">Brand context</div>
-              <p className="mt-3 text-sm leading-relaxed text-white/58">
-                {brandData.brand_description || "Add a brand description to help AI explain why a partnership is strategically aligned."}
+            <div className="mt-6 p-6 rounded-3xl bg-[var(--bg-soft)] border border-[var(--line)]">
+              <div className="section-kicker !text-[var(--text-faint)]">Brand context</div>
+              <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
+                {brandData.brand_description || "Detailed brand context used for AI rationale."}
               </p>
             </div>
           </div>
 
-          <div className="p-6 sm:p-8">
-            <div className="kicker">AI brand readout</div>
-            <h3 className="mt-2 text-2xl font-black tracking-tight text-white">Decision-ready identity</h3>
-            <div className="mt-5 grid gap-4">
-              <InsightTile label="Target audience" value={brandResult?.target_audience} description="Audience segment the brand naturally resonates with." />
-              <InsightTile label="Core values" value={brandResult?.core_values} description="Signals the emotional and thematic fit the brand wants in an event." />
-              <div className="rounded-[24px] border border-white/8 bg-gradient-to-br from-white/6 to-white/[0.025] p-5">
-                <div className="kicker">What happens next</div>
-                <p className="mt-3 text-sm leading-relaxed text-white/58">
-                  Move into deal evaluation to test event fit, probability band, AI rationale, and follow-up action plan.
+          <div className="p-8 bg-[var(--bg-soft)]/30">
+            <div className="section-kicker">AI brand readout</div>
+            <h3 className="mt-2 text-2xl font-black tracking-tight text-[var(--text)]">Strategic Identity</h3>
+            <div className="mt-6 grid gap-4">
+              <InsightTile label="Target audience" value={brandResult?.target_audience} description="Segment the brand naturally resonates with." />
+              <InsightTile label="Core values" value={brandResult?.core_values} description="Thematic fit brand seeks in partnerships." />
+              <div className="p-6 rounded-3xl bg-white dark:bg-slate-900 border border-[var(--line)] shadow-sm">
+                <div className="section-kicker !text-[var(--text-faint)]">What happens next</div>
+                <p className="mt-3 text-sm leading-relaxed text-[var(--text-soft)]">
+                  Move to Step 2 to test event fit against this brief.
                 </p>
-                <div className="mt-4 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.18em] text-emerald-300">
-                  <span className="h-2 w-2 rounded-full bg-emerald-400" />
-                  Brand profile locked in
+                <div className="mt-5 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-emerald-600">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  Context active
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </Card>
+      </section>
     );
   }
 
   return (
-    <Card className="overflow-hidden p-0">
-      <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr]">
-        <div className="border-b border-white/8 p-6 sm:p-8 lg:border-b-0 lg:border-r">
-          <div className="kicker">Step 1 · Brand foundation</div>
-          <h2 className="mt-2 text-3xl font-black tracking-tight text-white">Define the brand you are pitching</h2>
-          <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/52">
-            Create a richer brand context first so the analysis and prediction surfaces feel like a premium decision room,
-            not a raw form.
+    <section className="surface-card !p-0 overflow-hidden shadow-xl border-t-4 border-t-[var(--accent)]">
+      <div className="grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
+        <div className="p-8 bg-[var(--bg-soft)]/50 border-b border-[var(--line)] lg:border-b-0 lg:border-r">
+          <div className="section-kicker">Step 1 · Brand foundation</div>
+          <h2 className="mt-3 text-3xl font-black tracking-tight text-[var(--text)] leading-[1.1]">Define the brand you are pitching</h2>
+          <p className="mt-4 max-w-xl text-sm leading-relaxed text-[var(--text-soft)]">
+            Create a rich brand context first so the analysis feels like a premium decision room, not a raw form.
           </p>
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            <div className="metric-card">
-              <div className="kicker">What this unlocks</div>
-              <p className="mt-2 text-sm font-semibold text-white/84">Better sponsor fit explanation</p>
-              <p className="mt-1 text-sm leading-relaxed text-white/45">Your brand context improves AI-generated positioning and outreach.</p>
+          <div className="mt-10 grid gap-4">
+            <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-[var(--line)] shadow-sm">
+              <div className="section-kicker !text-[var(--accent)] mb-2">Benefit 01</div>
+              <p className="text-sm font-bold text-[var(--text)]">Better sponsor fit explanation</p>
+              <p className="mt-2 text-xs leading-relaxed text-[var(--text-soft)] opacity-70">Industry context improves AI-generated positioning.</p>
             </div>
-            <div className="metric-card">
-              <div className="kicker">Used in later steps</div>
-              <p className="mt-2 text-sm font-semibold text-white/84">Persona, KPI framing, messaging</p>
-              <p className="mt-1 text-sm leading-relaxed text-white/45">The predictor and recommendation blocks reuse these fields later.</p>
+            <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-[var(--line)] shadow-sm">
+              <div className="section-kicker !text-[var(--accent)] mb-2">Benefit 02</div>
+              <p className="text-sm font-bold text-[var(--text)]">Persona & messaging alignment</p>
+              <p className="mt-2 text-xs leading-relaxed text-[var(--text-soft)] opacity-70">The recommendation engine uses these fields later.</p>
             </div>
           </div>
         </div>
 
-        <form onSubmit={onAnalyzeBrand} className="p-6 sm:p-8">
-          <div className="grid gap-4">
+        <form onSubmit={onAnalyzeBrand} className="p-8 bg-white dark:bg-[#0f172a]">
+          <div className="space-y-6">
             <div>
-              <label className="field-label">Company name</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)] block mb-2">Company name</label>
               <input
                 name="company_name"
                 value={brandData.company_name}
                 onChange={(e) => setBrandData({ ...brandData, company_name: e.target.value })}
                 placeholder="e.g. Red Bull India"
-                className="input-field"
+                className="input-field !bg-[var(--bg-soft)] !border-[var(--line)]"
                 required
               />
             </div>
 
             <div>
-              <label className="field-label">Industry category</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)] block mb-2">Industry category</label>
               <select
                 name="industry"
                 value={brandData.industry}
                 onChange={(e) => setBrandData({ ...brandData, industry: e.target.value })}
-                className="input-field cursor-pointer"
+                className="input-field cursor-pointer !bg-[var(--bg-soft)] !border-[var(--line)]"
               >
                 {categories.map((category) => (
-                  <option key={category}>{category}</option>
+                  <option key={category} value={category}>{category}</option>
                 ))}
               </select>
             </div>
 
             <div>
-              <label className="field-label">Brand context & description</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-faint)] block mb-2">Brand context & description</label>
               <textarea
                 name="brand_description"
                 rows="4"
                 value={brandData.brand_description || ""}
                 onChange={(e) => setBrandData({ ...brandData, brand_description: e.target.value })}
-                placeholder="Summarize the brand promise, target audience, tone, and why the brand wants event partnerships."
-                className="input-field min-h-[140px]"
+                placeholder="Summarize the brand promise, target audience, tone, and goals."
+                className="input-field !bg-[var(--bg-soft)] !border-[var(--line)] min-h-[140px]"
               />
             </div>
           </div>
 
-          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <Button type="submit" disabled={brandLoading} className="w-full sm:w-auto px-6 py-3.5 text-sm">
-              {brandLoading ? "Analyzing brand..." : "Generate brand profile"}
-            </Button>
-            <div className="text-xs leading-relaxed text-white/40">
-              This runs the AI brand profile so the deal workspace can be tailored to the sponsor.
-            </div>
+          <div className="mt-8 flex flex-col gap-4">
+            <button 
+              type="submit" 
+              disabled={brandLoading} 
+              className="btn-primary !py-4 !rounded-2xl !text-xs !tracking-[0.15em] !uppercase font-black shadow-lg shadow-[var(--accent)]/20"
+            >
+              {brandLoading ? "Analyzing brand..." : "Generate brand profile →"}
+            </button>
+            <p className="text-[10px] text-center text-[var(--text-soft)] font-medium opacity-60">
+              Profiles are temporarily cached for the current session.
+            </p>
           </div>
 
           {brandErr ? (
-            <div className="mt-4 rounded-2xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-sm font-semibold text-rose-200">
+            <div className="mt-4 p-4 rounded-2xl bg-rose-500/5 border border-rose-500/10 text-xs font-bold text-rose-500 text-center">
               {brandErr}
             </div>
           ) : null}
         </form>
       </div>
-    </Card>
+    </section>
   );
 }

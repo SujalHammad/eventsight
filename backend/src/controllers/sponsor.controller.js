@@ -57,42 +57,68 @@ const buildFeedbackAggregateFields = () => ({
     }
 })
 
-const createSponsorProfile=asyncHandler(async(req,res)=>{
-    const existing = await Sponsor.findOne({ sponsor: req.user._id, isDeleted: false })
-    if(existing){
-        throw new ApiError(400, "Sponsor profile already exists")
-    }
-    const {brandName,brandType,description, brandKpi,cityFocus}=req.body;
-    if(!brandName || !brandType || !description || !brandKpi ||!cityFocus){
-        throw new ApiError(400,"All fields are required");
-    }
-    const existBrandType=await BrandType.findById(brandType)
-    if(!existBrandType){
-        throw new ApiError(400,"Brand type not exist");
+const createSponsorProfile = asyncHandler(async (req, res) => {
+    // Check if ANY profile exists (including deleted ones)
+    const existing = await Sponsor.findOne({ sponsor: req.user._id });
+
+    const { brandName, brandType, description, brandKpi, cityFocus } = req.body;
+
+    if (!brandName || !brandType || !description || !brandKpi || !cityFocus) {
+        throw new ApiError(400, "All fields are required");
     }
 
-    let sponsorLogoLocalFilePath;
-    if(req.file){
-        sponsorLogoLocalFilePath=req.file.path;
+    const existBrandType = await BrandType.findById(brandType);
+    if (!existBrandType) {
+        throw new ApiError(400, "Brand type not exist");
     }
+
+    const logoFile = req.file || (req.files && req.files.find(f => f.fieldname === "logo"));
+    const sponsorLogoLocalFilePath = logoFile?.path;
 
     let sponsorLogo;
-    if(sponsorLogoLocalFilePath){
-        sponsorLogo=await uploadOnCloudinary(sponsorLogoLocalFilePath)
-        if(!sponsorLogo){
-            throw new ApiError(500, "Logo upload failed")
+    if (sponsorLogoLocalFilePath) {
+        sponsorLogo = await uploadOnCloudinary(sponsorLogoLocalFilePath);
+        if (!sponsorLogo) {
+            throw new ApiError(500, "Logo upload failed");
         }
     }
 
-    const sponsor=await Sponsor.create({
-        sponsor:req.user._id,
+    if (existing) {
+        // If it was deleted, restore and update it. 
+        // If no new logo is provided during 'Create' attempt, we clear the old one to ensure a clean start.
+        const sponsor = await Sponsor.findByIdAndUpdate(
+            existing._id,
+            {
+                brandName,
+                brandType,
+                description,
+                brandKpi,
+                cityFocus,
+                isDeleted: false,
+                logo: sponsorLogo ? (sponsorLogo.secure_url || sponsorLogo.url) : null
+            },
+            { new: true }
+        );
+
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                sponsor,
+                "Sponsor profile updated successfully"
+            )
+        );
+    }
+
+    // Create new if nothing exists at all
+    const sponsor = await Sponsor.create({
+        sponsor: req.user._id,
         brandName,
         brandType,
         description,
         brandKpi,
         cityFocus,
-        logo:sponsorLogo?.url || null
-    })
+        logo: sponsorLogo?.secure_url || sponsorLogo?.url || null
+    });
 
     return res.status(201).json(
         new ApiResponse(
@@ -100,14 +126,14 @@ const createSponsorProfile=asyncHandler(async(req,res)=>{
             sponsor,
             "Sponsor profile created successfully"
         )
-    )
-})
+    );
+});
 
 const getSponsorProfile=asyncHandler(async(req,res)=>{
     const profile=await Sponsor.findOne({sponsor:req.user._id,isDeleted:false})
     .populate("brandType","name");
-     if (!profile) {
-        throw new ApiError(404, "Sponsor profile not found")
+    if (!profile) {
+        return res.status(200).json(new ApiResponse(200, null, "Sponsor profile not found"));
     }
 
      return res.status(200).json(
@@ -116,10 +142,9 @@ const getSponsorProfile=asyncHandler(async(req,res)=>{
 })
 
 const updateSponsorProfile = asyncHandler(async (req, res) => {
-
     const data = req.body
 
-    if (!data || Object.keys(data).length === 0 && !req.file) {
+    if ((!data || Object.keys(data).length === 0) && !req.file && (!req.files || req.files.length === 0)) {
         throw new ApiError(400, "No data provided for update")
     }
 
@@ -133,7 +158,7 @@ const updateSponsorProfile = asyncHandler(async (req, res) => {
         }
     }
 
-    if (Object.keys(updateData).length === 0 && !req.file) {
+    if (Object.keys(updateData).length === 0 && !req.file && (!req.files || req.files.length === 0)) {
         throw new ApiError(400, "No valid fields to update")
     }
 
@@ -146,10 +171,11 @@ const updateSponsorProfile = asyncHandler(async (req, res) => {
     }
 
 
-    if (req.file) {
-        const upload = await uploadOnCloudinary(req.file.path)
+    const fileToUpload = req.file || (req.files && req.files.find(f => f.fieldname === "logo")) || (req.files && req.files[0]);
+    if (fileToUpload) {
+        const upload = await uploadOnCloudinary(fileToUpload.path)
         if (!upload) throw new ApiError(500, "Logo upload failed")
-        updateData.logo = upload.url
+        updateData.logo = upload.secure_url || upload.url
     }
 
     const profile = await Sponsor.findOneAndUpdate(
@@ -653,7 +679,7 @@ const getPrediction = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Brand analysis failed")
     }
 
-    
+    console.log(avgOrganizerReputation,avgLineupQuality,avgActivationMaturity)
     let predictResponse
     try {
         predictResponse = await axios.post(

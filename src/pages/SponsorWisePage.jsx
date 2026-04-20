@@ -149,71 +149,82 @@ export default function SponsorWisePage() {
   };
 
   return (
-    <div className="space-y-6 animate-fade-up">
+    <div className="space-y-8 animate-fade-up">
       {step === 1 ? (
         <>
-          <section className="hero-panel settings-hero">
-            <div className="space-y-4">
-              <div className="section-kicker">SponsorWise predictor</div>
-              <h1 className="section-title !text-[clamp(2.15rem,4.6vw,4rem)]">Build the sponsor brief first, then run a cleaner prediction.</h1>
-              <p className="section-subtitle text-lg leading-8 max-w-3xl">
+          <section className="hero-panel" style={{
+            background: "linear-gradient(135deg, #6d5efc 0%, #4f46e5 100%)",
+            color: "#fff",
+            border: "none",
+            position: "relative",
+            overflow: "hidden"
+          }}>
+            {/* Subtle decorative glow */}
+            <div style={{
+              position: "absolute",
+              top: "-20%",
+              right: "-10%",
+              width: "400px",
+              height: "400px",
+              background: "radial-gradient(circle, rgba(255,255,255,0.1), transparent 70%)",
+              pointerEvents: "none"
+            }} />
+
+            <div className="relative z-10">
+              <div className="section-kicker !text-white/60 mb-3">SponsorWise predictor</div>
+              <h1 className="section-title !text-white !text-[clamp(2.4rem,5vw,4.2rem)] mb-4">
+                Build the sponsor brief first, then run a cleaner prediction.
+              </h1>
+              <p className="text-white/80 text-lg leading-8 max-w-3xl font-medium">
                 Define the brand once, let the model understand the category and context, then move into the
                 deal workspace with far less noise.
               </p>
             </div>
 
-            <div className="settings-hero-chip-row">
-              <div className="settings-hero-chip">
-                <span className="field-label !mb-1">Flow</span>
-                <div className="text-lg font-black">2-step predictor</div>
+            <div className="flex flex-wrap gap-4 mt-10 relative z-10">
+              <div className="px-6 py-4 rounded-3xl bg-white/10 backdrop-blur-md border border-white/10 text-white min-w-[200px]">
+                <div className="text-[10px] uppercase tracking-widest font-black opacity-60 mb-10">Flow</div>
+                <div className="text-xl font-black">2-step predictor</div>
               </div>
-              <div className="settings-hero-chip">
-                <span className="field-label !mb-1">Outcome</span>
-                <div className="text-lg font-black">Prediction + AI recommendations</div>
+              <div className="px-6 py-4 rounded-3xl bg-white/10 backdrop-blur-md border border-white/10 text-white min-w-[200px]">
+                <div className="text-[10px] uppercase tracking-widest font-black opacity-60 mb-10">Outcome</div>
+                <div className="text-xl font-black">AI Analysis Report</div>
               </div>
             </div>
           </section>
 
-          <div className="settings-grid items-start">
-            <section className="settings-card">
-              <div className="space-y-2 mb-6">
-                <div className="section-kicker">Why this flow works</div>
-                <h2 className="text-2xl font-black">A cleaner starting point</h2>
-                <p className="section-subtitle max-w-2xl">
+          <div className="space-y-8">
+            <section className="settings-card !max-w-none">
+              <div className="space-y-2 mb-8 text-center sm:text-left">
+                <div className="section-kicker">Strategic workflow</div>
+                <h2 className="text-3xl sm:text-4xl font-black tracking-tight">A cleaner starting point</h2>
+                <p className="muted text-base max-w-3xl">
                   The predictor works best when the brand context is set before event inputs. This keeps the deal
                   analysis sharper and makes the later AI output much more usable.
                 </p>
               </div>
 
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="soft-card">
-                  <div className="field-label">Brand fit</div>
-                  <div className="font-black text-lg mb-2">Clearer category mapping</div>
-                  <p className="muted">Industry, tone, and context are captured once instead of being guessed later.</p>
-                </div>
-                <div className="soft-card">
-                  <div className="field-label">Prediction quality</div>
-                  <div className="font-black text-lg mb-2">Less noisy inputs</div>
-                  <p className="muted">Deal scoring becomes easier to trust when the brand foundation is already defined.</p>
-                </div>
-                <div className="soft-card">
-                  <div className="field-label">AI output</div>
-                  <div className="font-black text-lg mb-2">Better recommendations</div>
-                  <p className="muted">Persona, outreach, and next-step guidance all improve with richer brand context.</p>
-                </div>
-                <div className="soft-card">
-                  <div className="field-label">Workflow</div>
-                  <div className="font-black text-lg mb-2">Move to deals when ready</div>
-                  <p className="muted">Once step 1 is done, the full report workspace opens with the brand carried through.</p>
-                </div>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                {[
+                  { label: "01 · Brand fit", title: "Category mapping", desc: "Industry, tone, and context are captured once instead of being guessed later." },
+                  { label: "02 · Quality", title: "Less noisy inputs", desc: "Deal scoring becomes easier to trust when the brand foundation is already defined." },
+                  { label: "03 · AI output", title: "Smart recommendations", desc: "Persona and outreach guidance all improve with richer brand context." },
+                  { label: "04 · Workflow", title: "Centralized workspace", desc: "Once step 1 is done, the full report workspace opens with the brand carried through." }
+                ].map((item, i) => (
+                  <div key={i} className="p-6 rounded-3xl bg-[var(--bg-soft)] border border-[var(--line)] shadow-sm hover:shadow-md transition-shadow">
+                    <div className="text-[10px] font-black uppercase tracking-widest text-[var(--accent)] mb-4">{item.label}</div>
+                    <div className="font-extrabold text-xl mb-2 text-[var(--text)]">{item.title}</div>
+                    <p className="text-sm font-medium text-[var(--text-soft)] leading-relaxed opacity-80">{item.desc}</p>
+                  </div>
+                ))}
               </div>
             </section>
 
-            <div className="space-y-4">
-              <div>
+            <div className="space-y-6">
+              <div className="text-center sm:text-left">
                 <div className="section-kicker">Step 1</div>
-                <h2 className="text-2xl font-black mt-2">Brand workspace</h2>
-                <p className="section-subtitle mt-2">Fill the company details and generate the profile before moving to event analysis.</p>
+                <h2 className="text-3xl font-black mt-2 tracking-tight">Brand workspace</h2>
+                <p className="muted text-sm mt-3 leading-relaxed">Fill the company details and generate the profile before moving to event analysis.</p>
               </div>
               <BrandPanel
                 step={1}
@@ -231,43 +242,62 @@ export default function SponsorWisePage() {
         </>
       ) : (
         <>
-          <section className="hero-panel settings-hero">
-            <div className="space-y-3">
-              <div className="section-kicker">Step 2 • prediction workspace</div>
-              <h1 className="section-title !text-[clamp(2rem,4vw,3.4rem)]">{brandData.company_name || "Brand"} sponsorship report</h1>
-              <p className="section-subtitle text-lg leading-8 max-w-3xl">
+          <section className="hero-panel" style={{
+            background: "linear-gradient(135deg, #6d5efc 0%, #4f46e5 100%)",
+            color: "#fff",
+            border: "none",
+            position: "relative",
+            overflow: "hidden"
+          }}>
+             {/* Decorative glow */}
+            <div style={{
+              position: "absolute",
+              top: "-20%",
+              right: "-10%",
+              width: "400px",
+              height: "400px",
+              background: "radial-gradient(circle, rgba(255,255,255,0.1), transparent 70%)",
+              pointerEvents: "none"
+            }} />
+
+            <div className="relative z-10">
+              <div className="section-kicker !text-white/60 mb-3">Step 2 • prediction workspace</div>
+              <h1 className="section-title !text-white !text-[clamp(2rem,4vw,3.4rem)] mb-4">
+                {brandData.company_name || "Brand"} sponsorship report
+              </h1>
+              <p className="text-white/80 text-lg leading-8 max-w-3xl font-medium">
                 Tune the deal inputs on the left and use the report surface on the right for the verdict, AI explanation,
                 recommendations, and outreach draft.
               </p>
             </div>
 
-            <div className="flex flex-wrap gap-3 justify-start xl:justify-end">
-              <div className="settings-hero-chip min-w-[180px]">
-                <span className="field-label !mb-1">Industry</span>
-                <div className="text-lg font-black">{brandData.industry || "—"}</div>
+            <div className="flex flex-wrap gap-4 mt-8 relative z-10">
+               <div className="px-6 py-4 rounded-3xl bg-white/10 backdrop-blur-md border border-white/10 text-white min-w-[200px]">
+                <div className="text-[10px] uppercase tracking-widest font-black opacity-60 mb-1">Industry</div>
+                <div className="text-xl font-black">{brandData.industry || "—"}</div>
               </div>
-              <div className="settings-hero-chip min-w-[180px]">
-                <span className="field-label !mb-1">Selected city</span>
-                <div className="text-lg font-black">{dealData.city || "—"}</div>
+              <div className="px-6 py-4 rounded-3xl bg-white/10 backdrop-blur-md border border-white/10 text-white min-w-[200px]">
+                <div className="text-[10px] uppercase tracking-widest font-black opacity-60 mb-1">Target City</div>
+                <div className="text-xl font-black">{dealData.city || "—"}</div>
               </div>
             </div>
           </section>
 
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-4 py-2">
             <div className="tab-row">
-              <span className="tab-pill active">Deal input</span>
-              <span className="tab-pill">AI report</span>
+              <button className="tab-pill active">Deal Workspace</button>
+              <button className="tab-pill" onClick={() => setStep(1)}>New Brand Brief</button>
             </div>
-            <button type="button" onClick={() => setStep(1)} className="btn-secondary">
-              ← Back to brand workspace
+            <button type="button" onClick={() => setStep(1)} className="btn-secondary !rounded-2xl !py-3">
+              ← Change brand context
             </button>
           </div>
 
-          <div className="grid xl:grid-cols-[420px,minmax(0,1fr)] gap-6 items-start">
-            <div className="space-y-4">
+          <div className="grid xl:grid-cols-[440px,minmax(0,1fr)] gap-8 items-start">
+            <div className="space-y-6">
               <div>
-                <div className="section-kicker">Deal form</div>
-                <h2 className="text-2xl font-black mt-2">Event inputs</h2>
+                <div className="section-kicker">Input parameters</div>
+                <h2 className="text-2xl font-black mt-2 tracking-tight">Event context</h2>
               </div>
               <DealPanel
                 step={2}
@@ -285,12 +315,12 @@ export default function SponsorWisePage() {
               />
             </div>
 
-            <div className="space-y-4 min-w-0">
+            <div className="space-y-6 min-w-0">
               <div>
-                <div className="section-kicker">Report surface</div>
-                <h2 className="text-2xl font-black mt-2">Prediction output</h2>
-                <p className="section-subtitle mt-2">
-                  Results appear here after you run the model. The whole area stays usable in both light and dark themes.
+                <div className="section-kicker">Intelligent analysis</div>
+                <h2 className="text-2xl font-black mt-2 tracking-tight">Prediction report</h2>
+                <p className="muted text-sm mt-3 leading-relaxed">
+                  Results appear here after model execution. Data is compared against your brand brief for high-precision feasibility scoring.
                 </p>
               </div>
               <ResultsPanel brandCategory={brandData.industry} dealData={dealData} result={result} />
